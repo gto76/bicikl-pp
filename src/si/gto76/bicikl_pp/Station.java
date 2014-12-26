@@ -1,9 +1,8 @@
 package si.gto76.bicikl_pp;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-
-import si.gto76.bicikl_pp.Stations.UserButtonListener;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -11,17 +10,22 @@ import android.app.ActionBar.LayoutParams;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 public class Station extends Activity {
+	
+	private Location stationLocation = null;
+	private static final int DURATION_TEXT_VIEW = 333;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -39,14 +43,59 @@ public class Station extends Activity {
 //		}
 		
 		getJson(id);
+		setLocationManager();
 	}
 	
 	public void getJson(String id) {
-		final StationsLookUp arrivals = new StationsLookUpStation(getApplicationContext(), id);
-		arrivals.execute("");
+		final StationsLookUp occupancy = new StationsLookUpStation(getApplicationContext(), id);
+		occupancy.execute("");
+
+		
 	}
 	
-	///////////// GET JSON FROM URL
+	/////////// GET LOCATION
+
+	public void setLocationManager() {
+		// Acquire a reference to the system Location Manager
+		LocationManager locationManager = (LocationManager) this
+				.getSystemService(Context.LOCATION_SERVICE);
+
+		// Define a listener that responds to location updates
+		LocationListener locationListener = new LocationListener() {
+			public void onLocationChanged(Location location) {
+				if (stationLocation == null) {
+					return;
+				}
+				final DurationLookUpStation duration = new DurationLookUpStation(getApplicationContext());
+				String origin = stationLocation.getLatitude()+","+stationLocation.getLongitude();
+				String destination = location.getLatitude()+","+location.getLongitude();
+				duration.execute(origin, destination);
+				
+				//TextView durationLabel = (TextView) findViewById(DURATION_TEXT_VIEW);
+				//durationLabel.setText(location.toString());
+			}
+
+			public void onStatusChanged(String provider, int status,
+					Bundle extras) {
+			}
+
+			public void onProviderEnabled(String provider) {
+			}
+
+			public void onProviderDisabled(String provider) {
+			}
+		};
+
+		// Register the listener with the Location Manager to receive location
+		// updates
+		locationManager.requestLocationUpdates(
+				LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+		locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0,
+				0, locationListener);
+
+	}
+	
+	///////////// GET STATION DATA
 	
 	private class StationsLookUpStation extends StationsLookUp {
 		
@@ -76,10 +125,47 @@ public class Station extends Activity {
 	            String free = stationAvailability.getString("free");
 								
 				LinearLayout layout = (LinearLayout) findViewById(R.id.stationsLayout);
-				createTextView("Available: "+available, layout);
-				createTextView("Free: "+free, layout);
+				createTextView("Available: "+available, layout, 111);
+				createTextView("Free: "+free, layout, 222);
+				createTextView("Duration: fetching...", layout, DURATION_TEXT_VIEW);
 				
-				//createButton(stationName, layout);
+				double lat = station.getDouble("lat");
+				double lng = station.getDouble("lng");
+				Location tempLoc = new Location("station");
+				tempLoc.setLatitude(lat);
+				tempLoc.setLongitude(lng);
+				stationLocation = tempLoc;
+				
+			} catch (JSONException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	
+	//////////// GET DURATION
+	
+	private class DurationLookUpStation extends DurationLookUp {
+
+		public DurationLookUpStation(Context ctx) {
+			super(ctx);
+		}
+	
+		@Override
+		protected void onPostExecute(JSONObject result) {
+			if (result == null) {
+				Toast.makeText(context, "Prislo je do napake.", Toast.LENGTH_SHORT).show();
+				return;
+			}
+			try {
+				JSONArray routes = result.getJSONArray("routes");
+				JSONArray legs = routes.getJSONObject(0).getJSONArray("legs");
+				JSONObject duration = legs.getJSONObject(0).getJSONObject("duration");
+				String durationString = duration.getString("text");
+				//int seconds = duration.getInt("value");
+				
+				TextView durationLabel = (TextView) findViewById(DURATION_TEXT_VIEW);
+				durationLabel.setText("Duration: "+durationString);
 			} catch (JSONException e) {
 				e.printStackTrace();
 			}
@@ -128,7 +214,7 @@ public class Station extends Activity {
 		layout.addView(button);
 	}
 	
-	@SuppressLint("NewApi") private void createTextView(String name, LinearLayout layout) {
+	@SuppressLint("NewApi") private void createTextView(String name, LinearLayout layout, int id) {
 		LayoutParams lparams = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
 		TextView textView = new TextView(this);
 		textView.setLayoutParams(lparams);
@@ -136,8 +222,10 @@ public class Station extends Activity {
 		textView.setGravity(Gravity.CENTER);
 		textView.setTextColor(Color.WHITE);
 		textView.setTextSize(29);
+		textView.setId(id);
 		layout.addView(textView);
 	}
+
 	
 
 }
