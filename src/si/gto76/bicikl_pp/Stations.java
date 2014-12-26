@@ -1,125 +1,239 @@
 package si.gto76.bicikl_pp;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.util.EntityUtils;
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.app.Fragment;
-import android.app.FragmentTransaction;
 import android.app.ActionBar.LayoutParams;
 import android.content.Context;
 import android.content.Intent;
-import android.os.AsyncTask;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Bundle;
+import android.os.Handler;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 import android.widget.Toast;
 
-public class Stations extends Activity {
-	
-	public static final String ADDRESS = "https://prevoz.org/api/bicikelj/list/";
+	//////////////////////////
+	//// LIST OF STATIONS ////
+	//////////////////////////
 
+public class Stations extends Activity {
+
+	private List<StationButton> buttons = new ArrayList<StationButton>();
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_stations);
 		
-		getJson(null);
-	}
-
-	public void getJson(View v) {
-		final StationsLookUp arrivals = new StationsLookUpStations(getApplicationContext());
-		arrivals.execute("");
+		getStationsDataAndBuildGui();
+		periodicallyCheckAvailability();
+		periodicallyCheckLocation();
 	}
 	
-	///////////// BUTTONS
-
-	@SuppressLint("NewApi") private void createButton(String id, String name, LinearLayout layout) {
-		LayoutParams lparams = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
-		Button button = new Button(this);
-		button.setLayoutParams(lparams);
-		button.setText(name);
-
-		Intent intent = new Intent(this, Station.class);
-		UserButtonListener buttonListener = new UserButtonListener(id, intent);
-		
-		button.setOnClickListener(buttonListener);
-		layout.addView(button);
+	private void getStationsDataAndBuildGui() {
+		final StationsDataFetcher stationsDataFetcher = new StationsDataFetcher(getApplicationContext());
+		stationsDataFetcher.execute();
 	}
 	
+	///////////// GET STATIONS DATA
+	
+	private class StationsDataFetcher extends StationsLookUp {
 
-	class UserButtonListener implements View.OnClickListener {
-		private String id;
-		private Intent intent;
-		public UserButtonListener(String id, Intent intent) { 
-			this.id = id;
-			this.intent = intent;
-		}
-		@Override
-		public void onClick(View v) {
-			Bundle bundle = new Bundle(); 
-			bundle.putString("id", id);
-			intent.putExtras(bundle);
-			startActivity(intent);
-		}
-	}
-	
-	
-	
-	///////////// GET JSON FROM URL
-	
-	private class StationsLookUpStations extends StationsLookUp {
-
-		public StationsLookUpStations(Context ctx) {
-			super(ctx);
+		public StationsDataFetcher(Context context) {
+			super(context);
 		}
 		
 		@Override
 		protected void onPostExecute(JSONObject result) {
 			if (result == null) {
-				Toast.makeText(context, "Prislo je do napake.", Toast.LENGTH_SHORT).show();
+				Toast.makeText(context, "Error occured while downloading stations data.", Toast.LENGTH_SHORT).show();
 				return;
 			}
 			try {
 				JSONObject markers = result.getJSONObject("markers");
-				LinearLayout layout = (LinearLayout) findViewById(R.id.stationsLayout);
-				
 				Iterator<String> iter = markers.keys();
 			    while (iter.hasNext()) {
-			        String key = iter.next();
-			        try {
-			        	JSONObject station = markers.getJSONObject(key);
-			            String stationName = station.getString("name");
-			            JSONObject stationAvailability = station.getJSONObject("station");
-			            String available = stationAvailability.getString("available");
-			            String free = stationAvailability.getString("free");
-			            
-			            String buttonText = stationName+" "+available+"/"+free; 
-			            createButton(key, buttonText, layout);
-			        } catch (JSONException e) {
-			        }
+			        String id = iter.next();
+			        parseStation(result, id);
 			    }
 			} catch (JSONException e) {
 				e.printStackTrace();
 			}
+			addButtonsToLayout();
+		}
+		
+		private void parseStation(JSONObject result, String id) throws JSONException {
+			// parse JSON
+			String stationName = getStationName(result, id);
+			Location location = getLocation(result, id);
+			int available = getAvailableBikes(result, id);
+			int free = getFreeSpots(result, id);
+			// create button
+			createButton(id, stationName, location, available, free);
+		}
+	}
+	
+	///////////// BUILD GUI
+	
+	private void addButtonsToLayout() {
+		Collections.sort(buttons);
+		LinearLayout layout = (LinearLayout) findViewById(R.id.stationsLayout);
+		for (Button b: buttons) {
+			layout.addView(b);
+		}
+	}
+	
+	private void resetLayout() {
+		LinearLayout layout = (LinearLayout) findViewById(R.id.stationsLayout);
+		layout.removeAllViews();
+		addButtonsToLayout();
+	}
+
+	@SuppressLint("NewApi") private void createButton(String id, String name, 
+														Location location, int available, int free) {
+		// create button
+		LayoutParams lparams = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+		StationButton button = new StationButton(this, id, name, location, available, free);
+		button.setLayoutParams(lparams);
+		// add listener
+		Intent intent = new Intent(this, Station.class);
+		UserButtonListener buttonListener = new UserButtonListener(button, intent);
+		button.setOnClickListener(buttonListener);
+		// add button to list
+		buttons.add(button);
+	}
+	
+
+	class UserButtonListener implements View.OnClickListener {
+		StationButton button;
+		private Intent intent;
+		public UserButtonListener(StationButton button, Intent intent) { 
+			this.button = button;
+			this.intent = intent;
+		}
+		@Override
+		public void onClick(View v) {
+			Bundle bundle = new Bundle(); 
+			button.fillBundle(bundle);
+			intent.putExtras(bundle);
+			startActivity(intent);
+		}
+	}
+	
+	///////////// PERIODICALLY CHECK BIKE AVAILABILITY
+
+	public void periodicallyCheckAvailability() {
+		final AvailabilityUpdater availabilityUpdater = new AvailabilityUpdater(getApplicationContext());
+		final Handler handler = new Handler();
+		Timer timer = new Timer();
+		TimerTask doAsynchronousTask = new TimerTask() {
+			@Override
+			public void run() {
+				handler.post(new Runnable() {
+					public void run() {
+						try {
+							availabilityUpdater.execute();
+						} catch (Exception e) {
+						}
+					}
+				});
+			}
+		};
+		timer.schedule(doAsynchronousTask, 0, Conf.updateStationMiliseconds);
+	}
+	
+	private class AvailabilityUpdater extends StationsLookUp {
+		
+		public AvailabilityUpdater(Context context) {
+			super(context);
+		}
+		
+		@Override
+		protected void onPostExecute(JSONObject result) {
+			if (result == null) {
+				Toast.makeText(context, "Error occured while downloading stations data.", Toast.LENGTH_SHORT).show();
+				return;
+			}
+			try {
+	            for (StationButton b: buttons) {
+	            	String id = b.id;
+	            	b.available = getAvailableBikes(result, id);
+	            	b.free = getFreeSpots(result, id);
+	            	b.updateText();
+	    		} 
+			} catch (JSONException e) {
+				e.printStackTrace();
+			}
+		}
+	}	
+	
+	///////////// PERIODICALLY CHECK LOCATION
+
+	public void periodicallyCheckLocation() {
+		LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+
+		LocationListener locationListener = new LocationListener() {
+			public void onLocationChanged(Location location) {
+				for (StationButton button: buttons) {
+					final DurationFetcher durationFetcher = new DurationFetcher(getApplicationContext(), button);
+					String origin = button.location.getLatitude()+","+button.location.getLongitude();
+					String destination = location.getLatitude()+","+location.getLongitude();
+					durationFetcher.execute(origin, destination);
+				}
+			}
+			public void onStatusChanged(String provider, int status, Bundle extras) {}
+			public void onProviderEnabled(String provider) {}
+			public void onProviderDisabled(String provider) {}
+		};
+
+		locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, Conf.updateLocationMiliseconds, 
+												Conf.updateLocationMeters, locationListener);
+		locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, Conf.updateLocationMiliseconds, 
+												Conf.updateLocationMeters, locationListener);
+	}
+	
+	private class DurationFetcher extends DurationLookUp {
+		
+		private StationButton button;
+
+		public DurationFetcher(Context ctx, StationButton button) {
+			super(ctx);
+			this.button = button;
+		}
+	
+		@Override
+		protected void onPostExecute(JSONObject result) {
+			if (result == null) {
+				Toast.makeText(context, "Error occured while downloading directions data.", Toast.LENGTH_SHORT).show();
+				return;
+			}
+			try {
+				button.durationText = getDurationText(result);
+				button.durationSeconds = getDurationSeconds(result);
+				button.updateText();
+			} catch (JSONException e) {
+				e.printStackTrace();
+			}
+			resetLayout();
 		}
 	}
 
-	////////////////// MENU
+	///////////// MENU
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
@@ -144,5 +258,50 @@ public class Stations extends Activity {
 			default:
 				return super.onOptionsItemSelected(item);
 		}
+	}
+	
+	///////////// STATION BUTTON CLASS
+	
+	class StationButton extends Button implements Comparable<StationButton> {
+		// required fields
+		final String id;
+		final String name;
+		final Location location;
+		int available;
+		int free;
+		// optional fields
+		Integer durationSeconds = Integer.MAX_VALUE;
+		String durationText = "fetching... ";
+		
+		public StationButton(Context context, String id, String name, Location location, int available, int free) {
+			super(context);
+			this.id = id;
+			this.name = name;
+			this.location = location;
+			this.available = available;
+			this.free = free;
+			updateText();
+		}
+
+		public void updateText() {
+			String text = durationText + " " + name + " " + available + "/" + free;
+			this.setText(text);
+		}
+
+		public void fillBundle(Bundle bundle) {
+			bundle.putString("id", id);
+			bundle.putString("name", name);
+			bundle.putDouble("long", location.getLongitude());
+			bundle.putDouble("lat", location.getLatitude());
+			bundle.putInt("available", available);
+			bundle.putInt("free", free);
+			bundle.putInt("durationSeconds", durationSeconds);
+			bundle.putString("durationText", durationText);
+		}
+		
+		@Override
+	    public int compareTo(StationButton other){
+			return this.durationSeconds.compareTo(other.durationSeconds);
+	    }
 	}
 }
