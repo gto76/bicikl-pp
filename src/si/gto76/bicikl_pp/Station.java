@@ -6,6 +6,8 @@ import java.util.TimerTask;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import si.gto76.bicikl_pp.Stations.StationButton;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ActionBar.LayoutParams;
@@ -47,8 +49,8 @@ public class Station extends Activity {
 		
 		initializeFields();
 		addLabelsToLayout();
-		periodicalyCheckStationData();
-		startLocationManager();
+		periodicallyCheckAvailability();
+		periodicallyCheckLocation();
 	}
 	
 	private void initializeFields() {
@@ -65,11 +67,8 @@ public class Station extends Activity {
 		free = bundle.getInt("free");
 		durationText = bundle.getString("durationText");
 	}
-	
-//	private void refreshStationData() {
-//		final GetStation station = new GetStation(getApplicationContext(), id);
-//		station.execute();
-//	}
+
+	///////////// BUILD GUI
 	
 	private void addLabelsToLayout() {
 		TextView title = (TextView) findViewById(R.id.title);
@@ -86,58 +85,39 @@ public class Station extends Activity {
 		addLabelsToLayout();
 	}
 	
-	///////////// PERIODICALY CHECK BIKE AVAILABILITY
-
-	public void periodicalyCheckStationData() {
-		final StationFetcher stationFetcher = new StationFetcher(getApplicationContext(), id);
-		final Handler handler = new Handler();
-		Timer timer = new Timer();
-		TimerTask doAsynchronousTask = new TimerTask() {
-			@Override
-			public void run() {
-				handler.post(new Runnable() {
-					public void run() {
-						try {
-							stationFetcher.execute();
-						} catch (Exception e) {
-						}
-					}
-				});
-			}
-		};
-		timer.schedule(doAsynchronousTask, 0, Conf.updateStationMiliseconds);
+	@SuppressLint("NewApi") private void createTextView(String name, LinearLayout layout, int id) {
+		LayoutParams lparams = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+		TextView textView = new TextView(this);
+		textView.setLayoutParams(lparams);
+		textView.setText(name);
+		textView.setGravity(Gravity.CENTER);
+		textView.setTextColor(Color.WHITE);
+		textView.setTextSize(29);
+		textView.setId(id);
+		layout.addView(textView);
 	}
-
-	///////////// STATION FETCHER
 	
-	private class StationFetcher extends StationsLookUp {
-		
-		private final String id;
+	///////////// PERIODICALLY CHECK BIKE AVAILABILITY
+	
+	public void periodicallyCheckAvailability() {
+		final StationsLookUp availabilityChecker = new StationsLookUp(
+				getApplicationContext()) {
 
-		public StationFetcher(Context context, String id) {
-			super(context);
-			this.id = id;
-		}
-		
-		@Override
-		protected void onPostExecute(JSONObject result) {
-			if (result == null) {
-				Toast.makeText(context, "Error occured while downloading stations data.", Toast.LENGTH_SHORT).show();
-				return;
-			}
-			try {
+			@Override
+			void onSuccessfulFetch(JSONObject result) throws JSONException {
 	            available = getAvailableBikes(result, id);
 	            free = getFreeSpots(result, id);
 	            resetLayout();
-			} catch (JSONException e) {
-				e.printStackTrace();
 			}
-		}
-	}
-		
-	/////////// START LOCATION MANAGER
+		};
+		;
 
-	public void startLocationManager() {
+		availabilityChecker.runPeriodically(Conf.updateStationMiliseconds);
+	}
+	
+	///////////// PERIODICALLY CHECK LOCATION
+
+	public void periodicallyCheckLocation() {
 		LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
 
 		LocationListener locationListener = new LocationListener() {
@@ -145,10 +125,10 @@ public class Station extends Activity {
 				if (stationLocation == null) {
 					return;
 				}
-				final GetDuration duration = new GetDuration(getApplicationContext());
+				final DurationFetcher durationFetcher = new DurationFetcher(getApplicationContext());
 				String origin = stationLocation.getLatitude()+","+stationLocation.getLongitude();
 				String destination = location.getLatitude()+","+location.getLongitude();
-				duration.execute(origin, destination);
+				durationFetcher.execute(origin, destination);
 			}
 			public void onStatusChanged(String provider, int status, Bundle extras) {}
 			public void onProviderEnabled(String provider) {}
@@ -161,11 +141,9 @@ public class Station extends Activity {
 												Conf.updateLocationMeters, locationListener);
 	}
 	
-	//////////// GET DURATION
-	
-	private class GetDuration extends DurationLookUp {
+	private class DurationFetcher extends DurationLookUp {
 
-		public GetDuration(Context ctx) {
+		public DurationFetcher(Context ctx) {
 			super(ctx);
 		}
 	
@@ -185,29 +163,7 @@ public class Station extends Activity {
 		}
 	}
 
-	///////////// MAKE BUTTONS
-
-	@SuppressLint("NewApi") private void createButton(String name, LinearLayout layout) {
-		LayoutParams lparams = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
-		Button button = new Button(this);
-		button.setLayoutParams(lparams);
-		button.setText(name);
-		layout.addView(button);
-	}
-	
-	@SuppressLint("NewApi") private void createTextView(String name, LinearLayout layout, int id) {
-		LayoutParams lparams = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
-		TextView textView = new TextView(this);
-		textView.setLayoutParams(lparams);
-		textView.setText(name);
-		textView.setGravity(Gravity.CENTER);
-		textView.setTextColor(Color.WHITE);
-		textView.setTextSize(29);
-		textView.setId(id);
-		layout.addView(textView);
-	}
-
-	///////////// MAKE  MENU
+	///////////// MENU
 	
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {

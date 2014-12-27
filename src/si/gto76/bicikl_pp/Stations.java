@@ -45,47 +45,32 @@ public class Stations extends Activity {
 		periodicallyCheckLocation();
 	}
 	
-	private void getStationsDataAndBuildGui() {
-		final StationsDataFetcher stationsDataFetcher = new StationsDataFetcher(getApplicationContext());
-		stationsDataFetcher.execute();
-	}
-	
 	///////////// GET STATIONS DATA
 	
-	private class StationsDataFetcher extends StationsLookUp {
-
-		public StationsDataFetcher(Context context) {
-			super(context);
-		}
-		
-		@Override
-		protected void onPostExecute(JSONObject result) {
-			if (result == null) {
-				Toast.makeText(context, "Error occured while downloading stations data.", Toast.LENGTH_SHORT).show();
-				return;
-			}
-			try {
+	private void getStationsDataAndBuildGui() {
+		final StationsLookUp stationsDataFetcher = new StationsLookUp(getApplicationContext()) {
+			
+			@Override
+			void onSuccessfulFetch(JSONObject result) throws JSONException {
 				JSONObject markers = result.getJSONObject("markers");
 				Iterator<String> iter = markers.keys();
 			    while (iter.hasNext()) {
 			        String id = iter.next();
 			        parseStation(result, id);
 			    }
-			} catch (JSONException e) {
-				e.printStackTrace();
 			}
-			addButtonsToLayout();
-		}
-		
-		private void parseStation(JSONObject result, String id) throws JSONException {
-			// parse JSON
-			String stationName = getStationName(result, id);
-			Location location = getLocation(result, id);
-			int available = getAvailableBikes(result, id);
-			int free = getFreeSpots(result, id);
-			// create button
-			createButton(id, stationName, location, available, free);
-		}
+
+			private void parseStation(JSONObject result, String id) throws JSONException {
+				// parse JSON
+				String stationName = getStationName(result, id);
+				Location location = getLocation(result, id);
+				int available = getAvailableBikes(result, id);
+				int free = getFreeSpots(result, id);
+				// create button
+				createButton(id, stationName, location, available, free);
+			}
+		};
+		stationsDataFetcher.execute();
 	}
 	
 	///////////// BUILD GUI
@@ -136,52 +121,26 @@ public class Stations extends Activity {
 	}
 	
 	///////////// PERIODICALLY CHECK BIKE AVAILABILITY
-
+	
 	public void periodicallyCheckAvailability() {
-		final AvailabilityUpdater availabilityUpdater = new AvailabilityUpdater(getApplicationContext());
-		final Handler handler = new Handler();
-		Timer timer = new Timer();
-		TimerTask doAsynchronousTask = new TimerTask() {
+		final StationsLookUp availabilityChecker = new StationsLookUp(
+				getApplicationContext()) {
+
 			@Override
-			public void run() {
-				handler.post(new Runnable() {
-					public void run() {
-						try {
-							availabilityUpdater.execute();
-						} catch (Exception e) {
-						}
-					}
-				});
+			void onSuccessfulFetch(JSONObject result) throws JSONException {
+				for (StationButton b : buttons) {
+					String id = b.id;
+					b.available = getAvailableBikes(result, id);
+					b.free = getFreeSpots(result, id);
+					b.updateText();
+				}
 			}
 		};
-		timer.schedule(doAsynchronousTask, 0, Conf.updateStationMiliseconds);
+		;
+
+		availabilityChecker.runPeriodically(Conf.updateStationMiliseconds);
 	}
-	
-	private class AvailabilityUpdater extends StationsLookUp {
 		
-		public AvailabilityUpdater(Context context) {
-			super(context);
-		}
-		
-		@Override
-		protected void onPostExecute(JSONObject result) {
-			if (result == null) {
-				Toast.makeText(context, "Error occured while downloading stations data.", Toast.LENGTH_SHORT).show();
-				return;
-			}
-			try {
-	            for (StationButton b: buttons) {
-	            	String id = b.id;
-	            	b.available = getAvailableBikes(result, id);
-	            	b.free = getFreeSpots(result, id);
-	            	b.updateText();
-	    		} 
-			} catch (JSONException e) {
-				e.printStackTrace();
-			}
-		}
-	}	
-	
 	///////////// PERIODICALLY CHECK LOCATION
 
 	public void periodicallyCheckLocation() {
@@ -226,10 +185,10 @@ public class Stations extends Activity {
 				button.durationText = getDurationText(result);
 				button.durationSeconds = getDurationSeconds(result);
 				button.updateText();
+				resetLayout();
 			} catch (JSONException e) {
 				e.printStackTrace();
 			}
-			resetLayout();
 		}
 	}
 

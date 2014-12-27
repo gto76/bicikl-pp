@@ -1,5 +1,8 @@
 package si.gto76.bicikl_pp;
 
+import java.util.Timer;
+import java.util.TimerTask;
+
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -10,6 +13,7 @@ import org.json.JSONObject;
 
 import android.content.Context;
 import android.os.AsyncTask;
+import android.os.Handler;
 
 abstract class LookUp extends AsyncTask<String, Void, JSONObject> {
 
@@ -38,6 +42,25 @@ abstract class LookUp extends AsyncTask<String, Void, JSONObject> {
 			e.printStackTrace();
 		}
 		return null;
+	}
+	
+	public void runPeriodically(int miliseconds) {
+		final Handler handler = new Handler();
+		Timer timer = new Timer();
+		TimerTask doAsynchronousTask = new TimerTask() {
+			@Override
+			public void run() {
+				handler.post(new Runnable() {
+					public void run() {
+						try {
+							LookUp.this.execute();
+						} catch (Exception e) {
+						}
+					}
+				});
+			}
+		};
+		timer.schedule(doAsynchronousTask, 0, miliseconds);
 	}
 	
 }

@@ -5,11 +5,31 @@ import org.json.JSONObject;
 
 import android.content.Context;
 import android.location.Location;
+import android.widget.Toast;
 
 abstract class StationsLookUp extends LookUp {
+	
+	abstract void onSuccessfulFetch(JSONObject result) throws JSONException;
 
 	public StationsLookUp(Context context) {
 		super(context, "https://prevoz.org/api/bicikelj/list/");
+	}
+	
+	///////
+	
+	@Override
+	protected void onPostExecute(JSONObject result) {
+		if (result == null) {
+			Toast.makeText(context,
+					"Error occured while downloading stations data.",
+					Toast.LENGTH_SHORT).show();
+			return;
+		}
+		try {
+			onSuccessfulFetch(result);
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	///////
@@ -50,6 +70,4 @@ abstract class StationsLookUp extends LookUp {
 		JSONObject markers = result.getJSONObject("markers");
 		return markers.getJSONObject(id);
 	}
-	
-	
 }
