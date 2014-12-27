@@ -144,52 +144,32 @@ public class Stations extends Activity {
 	///////////// PERIODICALLY CHECK LOCATION
 
 	public void periodicallyCheckLocation() {
-		LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-
-		LocationListener locationListener = new LocationListener() {
-			public void onLocationChanged(Location location) {
+		new LocationUpdater(this) {
+			@Override
+			void afterLocationChange(Location location) {
 				for (StationButton button: buttons) {
-					final DurationFetcher durationFetcher = new DurationFetcher(getApplicationContext(), button);
-					String origin = button.location.getLatitude()+","+button.location.getLongitude();
-					String destination = location.getLatitude()+","+location.getLongitude();
-					durationFetcher.execute(origin, destination);
+					fetchDuration(location, button);
 				}
 			}
-			public void onStatusChanged(String provider, int status, Bundle extras) {}
-			public void onProviderEnabled(String provider) {}
-			public void onProviderDisabled(String provider) {}
 		};
-
-		locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, Conf.updateLocationMiliseconds, 
-												Conf.updateLocationMeters, locationListener);
-		locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, Conf.updateLocationMiliseconds, 
-												Conf.updateLocationMeters, locationListener);
 	}
-	
-	private class DurationFetcher extends DurationLookUp {
-		
-		private StationButton button;
 
-		public DurationFetcher(Context ctx, StationButton button) {
-			super(ctx);
-			this.button = button;
-		}
-	
-		@Override
-		protected void onPostExecute(JSONObject result) {
-			if (result == null) {
-				Toast.makeText(context, "Error occured while downloading directions data.", Toast.LENGTH_SHORT).show();
-				return;
-			}
-			try {
+	private void fetchDuration(final Location location, final StationButton button) {
+		DurationLookUp durationFetcher = new DurationLookUp(
+				getApplicationContext()) {
+
+			@Override
+			void onSuccessfulFetch(JSONObject result) throws JSONException {
 				button.durationText = getDurationText(result);
 				button.durationSeconds = getDurationSeconds(result);
 				button.updateText();
 				resetLayout();
-			} catch (JSONException e) {
-				e.printStackTrace();
 			}
-		}
+		};
+		
+		String origin = button.location.getLatitude()+","+button.location.getLongitude();
+		String destination = location.getLatitude()+","+location.getLongitude();
+		durationFetcher.execute(origin, destination);
 	}
 
 	///////////// MENU

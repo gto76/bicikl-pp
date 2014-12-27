@@ -118,49 +118,32 @@ public class Station extends Activity {
 	///////////// PERIODICALLY CHECK LOCATION
 
 	public void periodicallyCheckLocation() {
-		LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-
-		LocationListener locationListener = new LocationListener() {
-			public void onLocationChanged(Location location) {
+		new LocationUpdater(this) {
+			@Override
+			void afterLocationChange(Location location) {
 				if (stationLocation == null) {
 					return;
 				}
-				final DurationFetcher durationFetcher = new DurationFetcher(getApplicationContext());
-				String origin = stationLocation.getLatitude()+","+stationLocation.getLongitude();
-				String destination = location.getLatitude()+","+location.getLongitude();
-				durationFetcher.execute(origin, destination);
+				fetchDuration(location);
 			}
-			public void onStatusChanged(String provider, int status, Bundle extras) {}
-			public void onProviderEnabled(String provider) {}
-			public void onProviderDisabled(String provider) {}
 		};
-
-		locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, Conf.updateLocationMiliseconds, 
-												Conf.updateLocationMeters, locationListener);
-		locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, Conf.updateLocationMiliseconds, 
-												Conf.updateLocationMeters, locationListener);
 	}
 	
-	private class DurationFetcher extends DurationLookUp {
+	private void fetchDuration(final Location location) {
+		DurationLookUp durationFetcher = new DurationLookUp(
+				getApplicationContext()) {
 
-		public DurationFetcher(Context ctx) {
-			super(ctx);
-		}
-	
-		@Override
-		protected void onPostExecute(JSONObject result) {
-			if (result == null) {
-				Toast.makeText(context, "Error occured while downloading directions data.", Toast.LENGTH_SHORT).show();
-				return;
-			}
-			try {
+			@Override
+			void onSuccessfulFetch(JSONObject result) throws JSONException {
 				String durationText = getDurationText(result);
 				TextView durationLabel = (TextView) findViewById(DURATION_TEXT_VIEW);
 				durationLabel.setText("Distance: "+durationText);
-			} catch (JSONException e) {
-				e.printStackTrace();
 			}
-		}
+		};
+		
+		String origin = stationLocation.getLatitude()+","+stationLocation.getLongitude();
+		String destination = location.getLatitude()+","+location.getLongitude();
+		durationFetcher.execute(origin, destination);
 	}
 
 	///////////// MENU
