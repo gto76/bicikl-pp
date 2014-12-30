@@ -6,7 +6,7 @@
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
-    tools:context="si.gto76.bicikl_pp.Stations" >
+    tools:context="si.gto76.bicikl_pp.AStations" >
 
     <ScrollView
          android:id="@+id/scrollView1"

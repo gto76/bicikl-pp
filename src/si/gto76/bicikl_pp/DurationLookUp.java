@@ -5,6 +5,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.content.Context;
+import android.location.Location;
 import android.widget.Toast;
 
 abstract class DurationLookUp extends LookUp {
@@ -19,7 +20,7 @@ abstract class DurationLookUp extends LookUp {
 
 	@Override
 	protected JSONObject doInBackground(String... params) {
-		String query = "?origin="+params[0]+"&destination="+params[1]+"&sensor=false&mode=walking";
+		String query = "?origin="+params[0]+","+params[1]+"&destination="+params[2]+","+params[3]+"&sensor=false&mode=walking";
 		return super.doInBackground(query);
 	}
 	
@@ -48,9 +49,37 @@ abstract class DurationLookUp extends LookUp {
 		return duration.getInt("value");
 	}
 	
+	protected static int getDistanceMeters(JSONObject result) throws JSONException {
+		JSONObject distance = getDistanceObject(result);
+		return distance.getInt("value");
+	}
+	
+	////////
+	
 	private static JSONObject getDurationObject(JSONObject result) throws JSONException {
 		JSONArray routes = result.getJSONArray("routes");
 		JSONArray legs = routes.getJSONObject(0).getJSONArray("legs");
 		return legs.getJSONObject(0).getJSONObject("duration");
+	}
+	
+	private static JSONObject getDistanceObject(JSONObject result) throws JSONException {
+		JSONArray routes = result.getJSONArray("routes");
+		JSONArray legs = routes.getJSONObject(0).getJSONArray("legs");
+		return legs.getJSONObject(0).getJSONObject("distance");
+	}
+	
+	//// UTIL
+	
+	/**
+	 * Converts two locations in string array of lenght 4, containing their lats and lngs.
+	 * Useful when calling execute.
+	 */
+	public static String[] getVarArgs(Location loc1, Location loc2) {
+		String originLat = String.valueOf(loc1.getLatitude());
+		String originLng = String.valueOf(loc1.getLongitude());
+		String destLat = String.valueOf(loc2.getLatitude());
+		String destLng = String.valueOf(loc2.getLongitude());
+		String[] out = new String[]{originLat, originLng, destLat, destLng};
+		return out;
 	}
 }

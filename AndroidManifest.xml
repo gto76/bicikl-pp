@@ -7,9 +7,34 @@
     <uses-sdk
         android:minSdkVersion="15"
         android:targetSdkVersion="19" />
+
+    <permission
+        android:name="si.gto76.bicikl_pp.permission.MAPS_RECEIVE"
+        android:protectionLevel="signature" />
+
+    <uses-permission android:name="YourPackageName.permission.MAPS_RECEIVE" />
+    <uses-permission android:name="com.google.android.providers.gsf.permission.READ_GSERVICES" />
     
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <uses-feature
+        android:glEsVersion="0x00020000"
+        android:required="true" />
+
+    <!--
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-feature
+        android:glEsVersion="0x00020000"
+        android:required="true" />
+    -->
 
     <application
         android:allowBackup="true"
@@ -17,7 +42,7 @@
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
         <activity
-            android:name=".Map"
+            android:name=".AMap"
             android:label="@string/app_name" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -26,29 +51,39 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".Stations"
+            android:name=".AStations"
             android:label="@string/title_activity_stations"
-            android:parentActivityName=".Map" >
+            android:parentActivityName=".AMap" >
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="si.gto76.bicikl_pp.Map" />
         </activity>
         <activity
-            android:name=".Paths"
+            android:name=".APaths"
             android:label="@string/title_activity_paths"
-            android:parentActivityName=".Map" >
+            android:parentActivityName=".AMap" >
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="si.gto76.bicikl_pp.Map" />
         </activity>
         <activity
-            android:name=".Station"
+            android:name=".AStation"
             android:label="@string/title_activity_station"
-            android:parentActivityName=".Map" >
+            android:parentActivityName=".AMap" >
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="si.gto76.bicikl_pp.Map" />
         </activity>
+
+        <!-- Google API Key -->
+        <meta-data
+            android:name="com.google.android.maps.v2.API_KEY"
+            android:value="AIzaSyCTBXziQ9NtE633QxhmSqEhRTgfgGldrrk" />
+        <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="@integer/google_play_services_version" />
+        
+       
     </application>
 
 </manifest>
