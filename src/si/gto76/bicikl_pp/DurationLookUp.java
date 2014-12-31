@@ -13,14 +13,14 @@ abstract class DurationLookUp extends LookUp {
 	abstract void onSuccessfulFetch(JSONObject result) throws JSONException;
 
 	public DurationLookUp(Context ctx) {
-		super(ctx, "http://maps.google.com/maps/api/directions/json");
+		super(ctx, "https://maps.google.com/maps/api/directions/json");
 	}
 	
 	///////
 
 	@Override
 	protected JSONObject doInBackground(String... params) {
-		String query = "?origin="+params[0]+","+params[1]+"&destination="+params[2]+","+params[3]+"&sensor=false&mode=walking";
+		String query = "?origin="+params[0]+","+params[1]+"&destination="+params[2]+","+params[3]+"&sensor=false&mode=walking&key=AIzaSyCTBXziQ9NtE633QxhmSqEhRTgfgGldrrk";
 		return super.doInBackground(query);
 	}
 	
@@ -52,6 +52,12 @@ abstract class DurationLookUp extends LookUp {
 	protected static int getDistanceMeters(JSONObject result) throws JSONException {
 		JSONObject distance = getDistanceObject(result);
 		return distance.getInt("value");
+	}
+	
+	protected static String getPolyline(JSONObject result) throws JSONException {
+		JSONArray routes = result.getJSONArray("routes");
+		JSONObject overview_polyline = routes.getJSONObject(0).getJSONObject("overview_polyline");
+		return overview_polyline.getString("points");
 	}
 	
 	////////

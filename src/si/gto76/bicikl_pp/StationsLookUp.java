@@ -39,6 +39,17 @@ abstract class StationsLookUp extends LookUp {
 	}
 
 	// ///// GETERS ////////
+	
+//	protected static List<Station> getStations(JSONObject result) throws JSONException {
+//		List<Station> stations = new ArrayList<Station>();
+//		for (String id: getIds(result)) {
+//			Station station = getStationObject(result, id);
+//			stations.add(station);
+//		}
+//		return stations;
+//	}
+	
+	///////
 
 	protected static List<String> getIds(JSONObject result) throws JSONException {
 		List<String> ids = new ArrayList<String>();

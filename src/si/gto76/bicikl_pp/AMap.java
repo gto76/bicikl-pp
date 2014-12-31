@@ -1,12 +1,15 @@
 package si.gto76.bicikl_pp;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.content.Intent;
+import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
@@ -21,6 +24,8 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
 
 public class AMap extends FragmentActivity {
 
@@ -28,23 +33,44 @@ public class AMap extends FragmentActivity {
 	private Marker destinationMarker;
 	private Map<Marker, String> stationIds = new HashMap<Marker, String>();
 
+
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_map);
 
 		setMap();
+		drawPolylineIfSent();
 	}
+
 
 	private void setMap() {
 		googleMap = ((MapFragment) getFragmentManager().findFragmentById(R.id.map)).getMap();
-		googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(46.0552778, 14.5144444), 13));
+		LatLng defaultLatLng = new LatLng(Conf.DEFAULT_LAT, Conf.DEFAULT_LNG);
+		googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(defaultLatLng, Conf.DEFAULT_ZOOM));
 		googleMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
 		googleMap.setMyLocationEnabled(true);
+		
+		
+		
 		setMarkers();
 		setMapListener();
 	}
 
+	private void drawPolylineIfSent() {
+		Intent intent = getIntent();
+		Bundle bundle = intent.getExtras();
+		if (bundle == null || !bundle.containsKey("polylines")) {
+			return;
+		}
+		String[] polylines = bundle.getStringArray("polylines");
+		for (String polyline: polylines) {
+			LatLng[] array = {};
+			Polyline line = googleMap.addPolyline(new PolylineOptions().addAll(Util.decodePoly(polyline))
+	        .geodesic(true).width(4).color(Color.BLUE));	
+		}
+	}
 
 	private void setMarkers() {
 		final StationsLookUp stationsFetcher = new StationsLookUp(getApplicationContext()) {
@@ -72,11 +98,11 @@ public class AMap extends FragmentActivity {
 	private float getMarkerColor(int available, int free) {
 		if (available == 0) {
 			return BitmapDescriptorFactory.HUE_RED; // Empty
-		} else if (available <= 3) {
+		} else if (available <= Conf.ACCEPTABLE_AVAILABILITY) {
 			return BitmapDescriptorFactory.HUE_YELLOW; // Almost empty
 		} else if (free == 0) {
 			return BitmapDescriptorFactory.HUE_VIOLET; // Full
-		} else if (free <= 3) {
+		} else if (free <= Conf.ACCEPTABLE_AVAILABILITY) {
 			return BitmapDescriptorFactory.HUE_BLUE; // Almost full
 		} else {
 			return BitmapDescriptorFactory.HUE_GREEN; // OK
@@ -129,6 +155,10 @@ public class AMap extends FragmentActivity {
 		Intent intent;
 		int itemId = item.getItemId();
 		if (itemId == R.id.action_settings) {
+			return true;
+		} else if (itemId == R.id.map) {
+			intent = new Intent(this, AMap.class);
+			startActivity(intent);
 			return true;
 		} else if (itemId == R.id.stations) {
 			intent = new Intent(this, AStations.class);

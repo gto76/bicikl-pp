@@ -37,7 +37,11 @@ abstract class LookUp extends AsyncTask<String, Void, JSONObject> {
 			final HttpClient client = new DefaultHttpClient();
 			final HttpResponse response = client.execute(request);
 			final HttpEntity entity = response.getEntity();
-			return new JSONObject(EntityUtils.toString(entity));
+			String responseJson = EntityUtils.toString(entity);
+			//if (responseJson.length() < 300) {
+			//	System.out.println(responseJson);
+			//}
+			return new JSONObject(responseJson);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
