@@ -51,7 +51,7 @@ abstract class LookUp extends AsyncTask<String, Void, JSONObject> {
 	public void runPeriodically(int miliseconds) {
 		final Handler handler = new Handler();
 		Timer timer = new Timer();
-		TimerTask doAsynchronousTask = new TimerTask() {
+		TimerTask asynchronousTask = new TimerTask() {
 			@Override
 			public void run() {
 				handler.post(new Runnable() {
@@ -64,7 +64,7 @@ abstract class LookUp extends AsyncTask<String, Void, JSONObject> {
 				});
 			}
 		};
-		timer.schedule(doAsynchronousTask, 0, miliseconds);
+		timer.schedule(asynchronousTask, 3000, miliseconds);
 	}
 	
 }

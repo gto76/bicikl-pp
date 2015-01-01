@@ -54,19 +54,9 @@ public class AStations extends Activity {
 			
 			@Override
 			void onSuccessfulFetch(JSONObject result) throws JSONException {
-				for (String id: getIds(result)) {
-					parseStation(result, id);
+				for (Station station: getStations(result)) {
+					createButton(station);
 				}
-			}
-
-			private void parseStation(JSONObject result, String id) throws JSONException {
-				// parse JSON
-				String stationName = getName(result, id);
-				Location location = getLocation(result, id);
-				int available = getAvailableBikes(result, id);
-				int free = getFreeSpots(result, id);
-				// create button
-				createButton(id, stationName, location, available, free);
 			}
 		};
 		stationsFetcher.execute();
@@ -88,11 +78,10 @@ public class AStations extends Activity {
 		}
 	}
 
-	@SuppressLint("NewApi") private void createButton(String id, String name, 
-														Location location, int available, int free) {
+	@SuppressLint("NewApi") private void createButton(Station station) {
 		// create button
 		LayoutParams lparams = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
-		StationButton button = new StationButton(this, id, name, location, available, free);
+		StationButton button = new StationButton(this, station);
 		button.setLayoutParams(lparams);
 		// add listener
 		Intent intent = new Intent(this, AStation.class);
@@ -100,8 +89,8 @@ public class AStations extends Activity {
 		button.setOnClickListener(buttonListener);
 		// add button to list
 		buttons.add(button);
+		resetLayout();
 	}
-	
 
 	class StationButtonListener implements View.OnClickListener {
 		StationButton button;
@@ -210,9 +199,9 @@ public class AStations extends Activity {
 			updateText();
 		}
 		
-		public StationButton(Context context, String id, String name, Location location, int available, int free) {
+		public StationButton(Context context, Station s) {
 			super(context);
-			s = new Station(id, name, location, available, free);
+			this.s = s;
 			updateText();
 		}
 
@@ -233,7 +222,4 @@ public class AStations extends Activity {
 			return this.durationSeconds.compareTo(other.durationSeconds);
 	    }
 	}
-	
-	
-	
 }
