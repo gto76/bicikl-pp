@@ -3,13 +3,15 @@ package si.gto76.bicikl_pp;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.google.android.gms.internal.ol;
+import si.gto76.bicikl_pp.AvailabilityReaderContract.Db;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ActionBar.LayoutParams;
 import android.content.Intent;
 import android.content.res.Resources;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
@@ -18,6 +20,8 @@ import android.os.Bundle;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -39,10 +43,10 @@ public class AStation extends Activity {
 		setContentView(R.layout.activity_station);
 
 		initializeFields();
-		addLabelsToLayout();
+		createLayout();
+		setBackgroundImage();
 		periodicallyCheckAvailability();
 		periodicallyCheckLocation();
-		setBackgroundImage();
 	}
 
 	private void initializeFields() {
@@ -52,21 +56,23 @@ public class AStation extends Activity {
 		durationText = bundle.getString("durationText", "fetching...");
 	}
 
-	// /////////// BUILD GUI
+	// /////////// CREATE LAYOUT /////////////////
 
-	private void addLabelsToLayout() {
+	private void createLayout() {
 		TextView title = (TextView) findViewById(R.id.title);
 		title.setText(s.name);
 		LinearLayout layout = (LinearLayout) findViewById(R.id.stationsLayout);
 		createTextView("Available: " + s.available, layout, 111);
 		createTextView("Free: " + s.free, layout, 222);
 		createTextView("Distance: " + durationText, layout, DURATION_TEXT_VIEW);
+		createButton(layout);
+		addHistoricalData();
 	}
 
 	private void resetLayout() {
 		LinearLayout layout = (LinearLayout) findViewById(R.id.stationsLayout);
 		layout.removeAllViews();
-		addLabelsToLayout();
+		createLayout();
 	}
 
 	@SuppressLint("NewApi")
@@ -82,6 +88,62 @@ public class AStation extends Activity {
 		layout.addView(textView);
 	}
 
+	private void createButton(LinearLayout layout) {
+		// create button
+		LayoutParams lparams = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+		Button button = new Button(getApplicationContext());
+		button.setLayoutParams(lparams);
+		// add listener
+		StationButtonListener buttonListener = new StationButtonListener();
+		button.setOnClickListener(buttonListener);
+		button.setText("Show on Map");
+		// add button to layout
+		layout.addView(button);
+	}
+
+	class StationButtonListener implements View.OnClickListener {
+		private Intent intent = new Intent(AStation.this, AMap.class);
+
+		@Override
+		public void onClick(View v) {
+			Bundle bundle = s.getBundle();
+			intent.putExtras(bundle);
+			startActivity(intent);
+		}
+	}
+
+	// /////// SHOW AVAILABILITY HISTORY - DB /////////////
+
+	private void addHistoricalData() {
+		AvailabilityReaderDbHelper aDbHelper = new AvailabilityReaderDbHelper(getApplicationContext());
+		SQLiteDatabase db = aDbHelper.getReadableDatabase();
+
+		String[] select = { Db.COLUMN_NAME_TIME, Db.COLUMN_NAME_AVAILABLE, Db.COLUMN_NAME_FREE };
+		String where = Db.COLUMN_NAME_STATION_ID + "=?";
+		String[] whereWildcards = { s.id };
+		String sortOrder = Db.COLUMN_NAME_TIME + " DESC";
+
+		Cursor cursor = db.query(Db.TABLE_NAME, select, where, whereWildcards, null, null, sortOrder);
+
+		LinearLayout layout = (LinearLayout) findViewById(R.id.stationsLayout);
+		createTextView("History:", layout, 444);
+		while (cursor.moveToNext()) {
+			long time = cursor.getLong(cursor.getColumnIndexOrThrow(Db.COLUMN_NAME_TIME));
+			int available = cursor.getInt(cursor.getColumnIndexOrThrow(Db.COLUMN_NAME_AVAILABLE));
+			int free = cursor.getInt(cursor.getColumnIndexOrThrow(Db.COLUMN_NAME_FREE));
+			displayRow(layout, time, available, free);
+		}
+
+		db.close();
+	}
+
+	private void displayRow(LinearLayout layout, long time, int available, int free) {
+		String date = Util.getDate(time, "dd/MM/yyyy HH:mm");
+		createTextView(date + " " + available + "/" + free, layout, 555);
+	}
+
+	// ////////////// SET BACKGROUND ///////////////
+
 	private void setBackgroundImage() {
 		ImageLookUp imageFetcher = new ImageLookUp(getApplicationContext()) {
 
@@ -89,15 +151,8 @@ public class AStation extends Activity {
 			void onSuccessfulFetch(Bitmap image) throws JSONException {
 				RelativeLayout rl = (RelativeLayout) findViewById(R.id.mainLayout);
 				Resources res = getResources();
-				if (image == null) {
-					System.out.println("#####Image is null.");
-				}
-				if (res == null) {
-					System.out.println("#####Resources is null");
-				}
 				BitmapDrawable ob = new BitmapDrawable(res, image);
 				rl.setBackgroundDrawable(ob);
-				
 			}
 		};
 		imageFetcher.execute(((Double) s.location.getLatitude()).toString(),
@@ -153,7 +208,6 @@ public class AStation extends Activity {
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
-		// Inflate the menu; this adds items to the action bar if it is present.
 		getMenuInflater().inflate(R.menu.station, menu);
 		return true;
 	}
@@ -170,10 +224,6 @@ public class AStation extends Activity {
 			return true;
 		} else if (itemId == R.id.stations) {
 			intent = new Intent(this, AStations.class);
-			startActivity(intent);
-			return true;
-		} else if (itemId == R.id.paths) {
-			intent = new Intent(this, APaths.class);
 			startActivity(intent);
 			return true;
 		} else {

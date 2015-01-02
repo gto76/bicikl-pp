@@ -38,9 +38,6 @@ abstract class LookUp extends AsyncTask<String, Void, JSONObject> {
 			final HttpResponse response = client.execute(request);
 			final HttpEntity entity = response.getEntity();
 			String responseJson = EntityUtils.toString(entity);
-			//if (responseJson.length() < 300) {
-			//	System.out.println(responseJson);
-			//}
 			return new JSONObject(responseJson);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -64,7 +61,7 @@ abstract class LookUp extends AsyncTask<String, Void, JSONObject> {
 				});
 			}
 		};
-		timer.schedule(asynchronousTask, 3000, miliseconds);
+		timer.schedule(asynchronousTask, Conf.INITIAL_DELAY_FOR_PERIODIC_TASKS, miliseconds);
 	}
 	
 }

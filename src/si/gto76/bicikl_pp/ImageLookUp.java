@@ -61,16 +61,16 @@ abstract class ImageLookUp extends AsyncTask<String, Void, Bitmap> {
 	protected Bitmap doInBackground(String... params) {
 		try {
 			Point size = getScreenSize();
+			System.out.println("#####"+size.x+" "+size.y);
+
 			String query = "?size="+size.x+"x"+size.y+"&location=" + params[0] + "," + params[1]
-					+ "&fov=90&pitch=10"+KEY;
+					+ "&fov=90"+KEY; //&pitch=10
 
 			String combinedAddress = address + query;
-			System.out.println("#####"+combinedAddress);
 			final HttpGet request = new HttpGet(combinedAddress);
 			request.addHeader("Accept", "image/jpeg");
 			final HttpClient client = new DefaultHttpClient();
 			final HttpResponse response = client.execute(request);
-			System.out.println("#####"+response.getStatusLine());
 			final HttpEntity entity = response.getEntity();
 			BufferedHttpEntity bufHttpEntity = new BufferedHttpEntity(entity);
 			

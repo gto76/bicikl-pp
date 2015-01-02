@@ -1,8 +1,6 @@
 package si.gto76.bicikl_pp;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.json.JSONException;
@@ -19,9 +17,11 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.GoogleMap.OnInfoWindowClickListener;
 import com.google.android.gms.maps.GoogleMap.OnMapLongClickListener;
+import com.google.android.gms.maps.GoogleMap.OnMarkerClickListener;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
@@ -29,11 +29,9 @@ import com.google.android.gms.maps.model.PolylineOptions;
 
 public class AMap extends FragmentActivity {
 
-	private GoogleMap googleMap;
+	private GoogleMap map;
 	private Marker destinationMarker;
 	private Map<Marker, String> stationIds = new HashMap<Marker, String>();
-
-
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -41,21 +39,31 @@ public class AMap extends FragmentActivity {
 		setContentView(R.layout.activity_map);
 
 		setMap();
+		zoomToStationIfSent();
 		drawPolylineIfSent();
 	}
 
+	// ///////////////////////
 
 	private void setMap() {
-		googleMap = ((MapFragment) getFragmentManager().findFragmentById(R.id.map)).getMap();
+		map = ((MapFragment) getFragmentManager().findFragmentById(R.id.map)).getMap();
 		LatLng defaultLatLng = new LatLng(Conf.DEFAULT_LAT, Conf.DEFAULT_LNG);
-		googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(defaultLatLng, Conf.DEFAULT_ZOOM));
-		googleMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
-		googleMap.setMyLocationEnabled(true);
-		
-		
-		
+		map.moveCamera(CameraUpdateFactory.newLatLngZoom(defaultLatLng, Conf.DEFAULT_ZOOM));
+		map.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+		map.setMyLocationEnabled(true);
+
 		setMarkers();
-		setMapListener();
+		setDestinationMarkerListeners();
+	}
+
+	private void zoomToStationIfSent() {
+		Intent intent = getIntent();
+		Bundle bundle = intent.getExtras();
+		if (bundle == null || !bundle.containsKey("id")) {
+			return;
+		}
+		Station station = new Station(bundle);
+		map.moveCamera(CameraUpdateFactory.newLatLngZoom(station.getLatLng(), Conf.STATION_ZOOM));
 	}
 
 	private void drawPolylineIfSent() {
@@ -65,12 +73,33 @@ public class AMap extends FragmentActivity {
 			return;
 		}
 		String[] polylines = bundle.getStringArray("polylines");
-		for (String polyline: polylines) {
-			LatLng[] array = {};
-			Polyline line = googleMap.addPolyline(new PolylineOptions().addAll(Util.decodePoly(polyline))
-	        .geodesic(true).width(4).color(Color.BLUE));	
+		int color = bundle.getInt("color");
+		LatLngBounds.Builder boundsBuilder = LatLngBounds.builder();
+		for (String polyline : polylines) {
+			if (polyline == null) {
+				continue;
+			}
+			PolylineOptions polyOptions = new PolylineOptions().addAll(Util.decodePoly(polyline))
+					.geodesic(true).width(4).color(color);
+			Polyline line = map.addPolyline(polyOptions);
+			for (LatLng point : line.getPoints()) {
+				boundsBuilder = boundsBuilder.include(point);
+			}
 		}
+		LatLngBounds bounds = boundsBuilder.build();
+		zoomToBounds(bounds);
 	}
+
+	private void zoomToBounds(final LatLngBounds bounds) {
+		map.setOnMapLoadedCallback(new GoogleMap.OnMapLoadedCallback() {
+			@Override
+			public void onMapLoaded() {
+				map.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, Conf.PATH_ZOOM_PADDING));
+			}
+		});
+	}
+
+	// ////////////////////////
 
 	private void setMarkers() {
 		final StationsLookUp stationsFetcher = new StationsLookUp(getApplicationContext()) {
@@ -82,13 +111,13 @@ public class AMap extends FragmentActivity {
 					LatLng latLng = getLatLng(result, id);
 					int available = getAvailableBikes(result, id);
 					int free = getFreeSpots(result, id);
-					String text =  available + "/" + free +" "+ name;
+					String text = available + "/" + free + " " + name;
 					float markerColor = getMarkerColor(available, free);
-					Marker marker = googleMap.addMarker(new MarkerOptions().position(latLng).title(text)
+					Marker marker = map.addMarker(new MarkerOptions().position(latLng).title(text)
 							.icon(BitmapDescriptorFactory.defaultMarker(markerColor)));
 					stationIds.put(marker, id);
 				}
-				setInfoListener(result);
+				setOnInfoClickListener(result);
 			}
 		};
 		;
@@ -98,26 +127,26 @@ public class AMap extends FragmentActivity {
 	private float getMarkerColor(int available, int free) {
 		if (available == 0) {
 			return BitmapDescriptorFactory.HUE_RED; // Empty
-		} else if (available <= Conf.ACCEPTABLE_AVAILABILITY) {
+		} else if (available < Conf.acceptableAvailability) {
 			return BitmapDescriptorFactory.HUE_YELLOW; // Almost empty
 		} else if (free == 0) {
-			return BitmapDescriptorFactory.HUE_VIOLET; // Full
-		} else if (free <= Conf.ACCEPTABLE_AVAILABILITY) {
-			return BitmapDescriptorFactory.HUE_BLUE; // Almost full
+			return BitmapDescriptorFactory.HUE_BLUE; // Full
+		} else if (free < Conf.acceptableAvailability) {
+			return BitmapDescriptorFactory.HUE_AZURE; // Almost full
 		} else {
 			return BitmapDescriptorFactory.HUE_GREEN; // OK
 		}
 	}
-	
+
 	// sets listener that listens for clicks on the info window
-	private void setInfoListener(final JSONObject result) {
-		googleMap.setOnInfoWindowClickListener(new OnInfoWindowClickListener() {
+	private void setOnInfoClickListener(final JSONObject result) {
+		map.setOnInfoWindowClickListener(new OnInfoWindowClickListener() {
 
 			@Override
 			public void onInfoWindowClick(Marker marker) {
 				try {
 					Intent intent = new Intent(AMap.this, AStation.class);
-					String id =  stationIds.get(marker);
+					String id = stationIds.get(marker);
 					Bundle bundle = StationsLookUp.getBundle(result, id);
 					intent.putExtras(bundle);
 					startActivity(intent);
@@ -128,21 +157,36 @@ public class AMap extends FragmentActivity {
 		});
 	}
 
-	private void setMapListener() {
-		googleMap.setOnMapLongClickListener(new OnMapLongClickListener() {
+	// ///////// DESTINATION MARKER LISTENERS /////////////////
+
+	private void setDestinationMarkerListeners() {
+		// CREATE:
+		map.setOnMapLongClickListener(new OnMapLongClickListener() {
 
 			@Override
 			public void onMapLongClick(LatLng latLng) {
 				if (destinationMarker != null) {
 					destinationMarker.remove();
 				}
-	            destinationMarker = googleMap.addMarker(new MarkerOptions().position(latLng).draggable(true)
-	            		.icon(BitmapDescriptorFactory.fromResource(R.drawable.finish_flag_64)));
+				destinationMarker = map.addMarker(new MarkerOptions().position(latLng).draggable(true)
+						.icon(BitmapDescriptorFactory.fromResource(R.drawable.finish_flag_64)));
 			}
-	    });
+		});
+		// DELETE:
+		map.setOnMarkerClickListener(new OnMarkerClickListener() {
+
+			@Override
+			public boolean onMarkerClick(Marker marker) {
+				if (marker.equals(destinationMarker)) {
+					destinationMarker.remove();
+					return true;
+				}
+				return false;
+			}
+		});
 	}
 
-	// ////
+	// //////// MENU /////////
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
@@ -165,19 +209,19 @@ public class AMap extends FragmentActivity {
 			startActivity(intent);
 			return true;
 		} else if (itemId == R.id.paths) {
-			Location origin = googleMap.getMyLocation();
+			Location origin = map.getMyLocation();
 			if (destinationMarker == null || origin == null) {
 				return false;
 			}
 			intent = new Intent(this, APaths.class);
-			Bundle bundle = new Bundle(); 
+			Bundle bundle = new Bundle();
 			bundle.putDouble("originLat", origin.getLatitude());
 			bundle.putDouble("originLng", origin.getLongitude());
 			bundle.putDouble("destinatonLat", destinationMarker.getPosition().latitude);
 			bundle.putDouble("destinationLng", destinationMarker.getPosition().longitude);
 			intent.putExtras(bundle);
 			startActivity(intent);
-			
+
 			return true;
 		} else {
 			return super.onOptionsItemSelected(item);

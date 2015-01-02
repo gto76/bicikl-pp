@@ -13,8 +13,5 @@
     <item
         android:id="@+id/stations"
         android:title="Stations"/>
-    <item
-        android:id="@+id/paths"
-        android:title="Paths"/>
-
+    
 </menu>

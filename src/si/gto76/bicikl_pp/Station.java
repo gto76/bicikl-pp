@@ -1,5 +1,7 @@
 package si.gto76.bicikl_pp;
 
+import com.google.android.gms.maps.model.LatLng;
+
 import android.location.Location;
 import android.os.Bundle;
 
@@ -21,7 +23,7 @@ class Station {
 	public Station(String id, String name, double lat, double lng, int available, int free) {
 		this.id = id;
 		this.name = name;
-		this.location = createLocation(lat, lng);
+		this.location = Util.getLocation(lat, lng);
 		this.available = available;
 		this.free = free;
 	}
@@ -31,7 +33,7 @@ class Station {
 		name = bundle.getString("name");
 		double lat = bundle.getDouble("lat");
 		double lng = bundle.getDouble("lng");
-		location = createLocation(lat, lng);
+		location = Util.getLocation(lat, lng);
 		available = bundle.getInt("available");
 		free = bundle.getInt("free");
 	}
@@ -49,10 +51,7 @@ class Station {
 		return bundle;
 	}
 	
-	private static Location createLocation(double lat, double lng) {
-		Location tempLoc = new Location("station");
-		tempLoc.setLatitude(lat);
-		tempLoc.setLongitude(lng);
-		return tempLoc;
+	public LatLng getLatLng() {
+		return new LatLng(location.getLatitude(), location.getLongitude());
 	}
 }

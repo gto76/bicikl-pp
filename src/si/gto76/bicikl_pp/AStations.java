@@ -15,6 +15,9 @@ import android.app.Activity;
 import android.app.ActionBar.LayoutParams;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -25,13 +28,12 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 	//////////////////////////
 	//// LIST OF STATIONS ////
 	//////////////////////////
-
-// TODO add api key
 
 public class AStations extends Activity {
 
@@ -45,6 +47,7 @@ public class AStations extends Activity {
 		getStationsDataAndBuildGui();
 		periodicallyCheckAvailability();
 		periodicallyCheckLocation();
+		setBackgroundImage();
 	}
 	
 	///////////// GET STATIONS DATA
@@ -83,28 +86,31 @@ public class AStations extends Activity {
 		LayoutParams lparams = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
 		StationButton button = new StationButton(this, station);
 		button.setLayoutParams(lparams);
-		// add listener
-		Intent intent = new Intent(this, AStation.class);
-		StationButtonListener buttonListener = new StationButtonListener(button, intent);
-		button.setOnClickListener(buttonListener);
 		// add button to list
 		buttons.add(button);
 		resetLayout();
 	}
+	
+	private void setBackgroundImage() {
+		LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        Location location = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+        
+        if (location == null) {
+        	return;
+        }
+        
+		ImageLookUp imageFetcher = new ImageLookUp(getApplicationContext()) {
 
-	class StationButtonListener implements View.OnClickListener {
-		StationButton button;
-		private Intent intent;
-		public StationButtonListener(StationButton button, Intent intent) { 
-			this.button = button;
-			this.intent = intent;
-		}
-		@Override
-		public void onClick(View v) {
-			Bundle bundle = button.getBundle();
-			intent.putExtras(bundle);
-			startActivity(intent);
-		}
+			@Override
+			void onSuccessfulFetch(Bitmap image) throws JSONException {
+				RelativeLayout rl = (RelativeLayout) findViewById(R.id.mainLayout);
+				Resources res = getResources();
+				BitmapDrawable ob = new BitmapDrawable(res, image);
+				rl.setBackgroundDrawable(ob);
+			}
+		};
+		imageFetcher.execute(((Double) location.getLatitude()).toString(),
+				((Double) location.getLongitude()).toString());
 	}
 	
 	///////////// PERIODICALLY CHECK BIKE AVAILABILITY
@@ -175,10 +181,6 @@ public class AStations extends Activity {
 			intent = new Intent(this, AMap.class);
 			startActivity(intent);
 			return true;
-		} else if (itemId == R.id.paths) {
-			intent = new Intent(this, APaths.class);
-			startActivity(intent);
-			return true;
 		} else {
 			return super.onOptionsItemSelected(item);
 		}
@@ -192,34 +194,39 @@ public class AStations extends Activity {
 		// optional
 		Integer durationSeconds = Integer.MAX_VALUE;
 		String durationText = "fetching... ";
-		
-		public StationButton(Context context, Bundle bundle) {
-			super(context);
-			s = new Station(bundle);
-			updateText();
-		}
-		
+
 		public StationButton(Context context, Station s) {
 			super(context);
 			this.s = s;
+			addListener();
 			updateText();
 		}
 
+		private void addListener() {
+			StationButtonListener buttonListener = new StationButtonListener();
+			this.setOnClickListener(buttonListener);
+		}
+		
 		public void updateText() {
 			String text = durationText + " " + s.name + " " + s.available + "/" + s.free;
 			this.setText(text);
-		}
-
-		public Bundle getBundle() {
-			Bundle bundle = s.getBundle();
-			bundle.putInt("durationSeconds", durationSeconds);
-			bundle.putString("durationText", durationText);
-			return bundle;
 		}
 		
 		@Override
 	    public int compareTo(StationButton other){
 			return this.durationSeconds.compareTo(other.durationSeconds);
 	    }
+		
+		class StationButtonListener implements View.OnClickListener {
+			private Intent intent = new Intent(AStations.this, AStation.class);
+			@Override
+			public void onClick(View v) {
+				Bundle bundle = s.getBundle();
+				bundle.putInt("durationSeconds", durationSeconds);
+				bundle.putString("durationText", durationText);
+				intent.putExtras(bundle);
+				startActivity(intent);
+			}
+		}
 	}
 }

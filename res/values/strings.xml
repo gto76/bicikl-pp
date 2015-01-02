@@ -2,7 +2,6 @@
 <resources>
 
     <string name="app_name">bicikl-pp</string>
-    <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
     <string name="title_activity_stations">Stations</string>
     <string name="title_activity_paths">Paths</string>

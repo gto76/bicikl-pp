@@ -8,11 +8,18 @@ import java.util.List;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.LatLngBounds.Builder;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ActionBar.LayoutParams;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.v4.util.Pair;
@@ -21,6 +28,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 
 public class APaths extends Activity {
 
@@ -36,6 +44,7 @@ public class APaths extends Activity {
 
 		initializeFields();
 		getOriginStations();
+		setBackgroundImage();
 	}
 
 	private void initializeFields() {
@@ -48,8 +57,6 @@ public class APaths extends Activity {
 		double destinationLng = bundle.getDouble("destinationLng");
 		destination = Util.getLocation(destinatonLat, destinationLng);
 	}
-	
-	
 
 	private void getOriginStations() {
 		final StationsLookUp stationsFetcher = new StationsLookUp(getApplicationContext()) {
@@ -96,6 +103,7 @@ public class APaths extends Activity {
 						button.polylines[0] = getPolyline(result);
 						updateTextAndResetLayout(button);
 					}
+
 				};
 				String[] args = DurationLookUp.getVarArgs(origin, button.originStation.location);
 				durationWalk1Fetcher.execute(args);
@@ -169,7 +177,7 @@ public class APaths extends Activity {
 		int i = 0;
 		for (Pair<Float, Station> distanceAndStation : distancesToOrigin) {
 			Station station = distanceAndStation.second;
-			if (f.getValue(station) >= Conf.ACCEPTABLE_AVAILABILITY) {
+			if (f.getValue(station) >= Conf.acceptableAvailability) {
 				remainingGreens--;
 			}
 			i++;
@@ -211,30 +219,29 @@ public class APaths extends Activity {
 		LayoutParams lparams = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
 		final PathButton button = new PathButton(context, originStation, destinationStation);
 		button.setLayoutParams(lparams);
-		// add listener
-		Intent intent = new Intent(this, AMap.class);
-		PathButtonListener buttonListener = new PathButtonListener(button, intent);
-		button.setOnClickListener(buttonListener);
+		button.setAlpha((float)0.75);
 		// add button to list
 		buttons.add(button);
 	}
 
-	class PathButtonListener implements View.OnClickListener {
-		PathButton button;
-		private Intent intent;
 
-		public PathButtonListener(PathButton button, Intent intent) {
-			this.button = button;
-			this.intent = intent;
-		}
+	
+	private void setBackgroundImage() {
+		ImageLookUp imageFetcher = new ImageLookUp(getApplicationContext()) {
 
-		@Override
-		public void onClick(View v) {
-			Bundle bundle = new Bundle();
-			bundle.putStringArray("polylines", button.polylines);
-			intent.putExtras(bundle);
-			startActivity(intent);
-		}
+			@Override
+			void onSuccessfulFetch(Bitmap image) throws JSONException {
+				if (image == null) {
+					return;
+				}
+				RelativeLayout rl = (RelativeLayout) findViewById(R.id.mainLayout);
+				Resources res = getResources();
+				BitmapDrawable ob = new BitmapDrawable(res, image);
+				rl.setBackgroundDrawable(ob);
+			}
+		};
+		imageFetcher.execute(((Double) destination.getLatitude()).toString(),
+				((Double) destination.getLongitude()).toString());
 	}
 
 	// ///////
@@ -264,7 +271,9 @@ public class APaths extends Activity {
 		}
 	}
 
-	// /////// PATH BUTTON CLASS
+	// ######
+	// ###### PATH BUTTON CLASS
+	// ######
 
 	/**
 	 * Button that contains complete info about path. A path consists of four
@@ -275,6 +284,7 @@ public class APaths extends Activity {
 		// required
 		Station originStation;
 		Station destinationStation;
+		int color;
 		// optional
 		Integer durationWalk1;
 		Integer durationCycle;
@@ -285,27 +295,26 @@ public class APaths extends Activity {
 			super(context);
 			this.originStation = originStation;
 			this.destinationStation = destinationStation;
+			setColor();
 			updateText();
+			addListener();
 		}
+		
+		////////////// COLOR
 
-		public Integer getDurationSeconds() {
-			if (!allSet()) {
-				return Integer.MAX_VALUE;
+		private void setColor() {
+			int weakestLink = Math.min(originStation.available, destinationStation.free);
+			if (weakestLink >= Conf.acceptableAvailability) {
+				color = Color.GREEN;
+			} else if (weakestLink > 0) {
+				color = Color.YELLOW;
+			} else {
+				color = Color.RED;
 			}
-			return durationWalk1 + durationCycle + durationWalk2;
+			this.setBackgroundColor(color);
 		}
 
-		private String getDurationText() {
-			if (!allSet()) {
-				return "fetchig...";
-			}
-			int seconds = getDurationSeconds();
-			return toText(seconds);
-		}
-
-		public boolean allSet() {
-			return durationWalk1 != null && durationCycle != null && durationWalk2 != null;
-		}
+		////////////// TEXT
 
 		public void updateText() {
 			String text = getDurationText() + " | " + toText(durationWalk1) + " -> "
@@ -314,12 +323,50 @@ public class APaths extends Activity {
 					+ toText(durationWalk2);
 			this.setText(text);
 		}
+		
+		private String getDurationText() {
+			if (!allSet()) {
+				return "fetchig...";
+			}
+			int seconds = getDurationSeconds();
+			return toText(seconds);
+		}
+		
+		private Integer getDurationSeconds() {
+			if (!allSet()) {
+				return Integer.MAX_VALUE;
+			}
+			return durationWalk1 + durationCycle + durationWalk2;
+		}
+		
+		private boolean allSet() {
+			return durationWalk1 != null && durationCycle != null && durationWalk2 != null;
+		}
 
 		private String toText(Integer seconds) {
 			if (seconds == null) {
 				return "fetching...";
 			}
 			return Util.secondsToText(seconds);
+		}
+		
+		////////// SHOW ON MAP LISTENER
+
+		private void addListener() {
+			PathButtonListener buttonListener = new PathButtonListener();
+			this.setOnClickListener(buttonListener);
+		}
+		
+		class PathButtonListener implements View.OnClickListener {
+			private Intent intent = new Intent(APaths.this, AMap.class);
+			@Override
+			public void onClick(View v) {
+				Bundle bundle = new Bundle();
+				bundle.putStringArray("polylines", PathButton.this.polylines);
+				bundle.putInt("color", color);
+				intent.putExtras(bundle);
+				startActivity(intent);
+			}
 		}
 
 		@Override

@@ -4,6 +4,9 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
+
 import android.content.Context;
 import android.location.Location;
 import android.widget.Toast;
@@ -60,6 +63,18 @@ abstract class DurationLookUp extends LookUp {
 		JSONArray routes = result.getJSONArray("routes");
 		JSONObject overview_polyline = routes.getJSONObject(0).getJSONObject("overview_polyline");
 		return overview_polyline.getString("points");
+	}
+	
+	protected static LatLngBounds getBounds(JSONObject result) throws JSONException {
+		JSONArray routes = result.getJSONArray("routes");
+		JSONObject bounds = routes.getJSONObject(0).getJSONObject("bounds");
+		JSONObject southwest = bounds.getJSONObject("southwest");
+		double swLat = southwest.getDouble("lat");
+		double swLng = southwest.getDouble("lng");
+		JSONObject northeast = bounds.getJSONObject("northeast");
+		double neLat = northeast.getDouble("lat");
+		double neLng = northeast.getDouble("lng");
+		return new LatLngBounds(new LatLng(swLat, swLng), new LatLng(neLat, neLng));
 	}
 
 	// //////
