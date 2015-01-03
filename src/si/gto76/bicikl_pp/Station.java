@@ -5,12 +5,12 @@ import com.google.android.gms.maps.model.LatLng;
 import android.location.Location;
 import android.os.Bundle;
 
-class Station {
-	final String id;
-	final String name;
-	final Location location;
-	int available;
-	int free;
+public class Station {
+	public final String id;
+	public final String name;
+	public final Location location;
+	public int available;
+	public int free;
 
 	public Station(String id, String name, Location location, int available, int free) {
 		this.id = id;

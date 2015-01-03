@@ -10,6 +10,11 @@ import java.util.TimerTask;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import si.gto76.bicikl_pp.asynctasks.DurationLookUp;
+import si.gto76.bicikl_pp.asynctasks.ImageLookUp;
+import si.gto76.bicikl_pp.asynctasks.LocationUpdater;
+import si.gto76.bicikl_pp.asynctasks.StationsLookUp;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ActionBar.LayoutParams;
@@ -31,57 +36,62 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
-	//////////////////////////
-	//// LIST OF STATIONS ////
-	//////////////////////////
+//////////////////////////
+//// LIST OF STATIONS ////
+//////////////////////////
 
 public class AStations extends Activity {
 
 	private List<StationButton> buttons = new ArrayList<StationButton>();
-	
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_stations);
-		
+
 		getStationsDataAndBuildGui();
 		periodicallyCheckAvailability();
 		periodicallyCheckLocation();
 		setBackgroundImage();
 	}
-	
-	///////////// GET STATIONS DATA
-	
+
+	// //////////////////////////////////////////
+	// /////////// GET STATIONS DATA ////////////
+	// //////////////////////////////////////////
+
 	private void getStationsDataAndBuildGui() {
 		final StationsLookUp stationsFetcher = new StationsLookUp(getApplicationContext()) {
-			
+
 			@Override
-			void onSuccessfulFetch(JSONObject result) throws JSONException {
-				for (Station station: getStations(result)) {
+			public void onSuccessfulFetch(JSONObject result) throws JSONException {
+				for (Station station : getStations(result)) {
 					createButton(station);
 				}
 			}
 		};
 		stationsFetcher.execute();
 	}
-	
-	///////////// BUILD GUI
-	
+
+	// ////////////////////////////////////
+	// /////////// BUILD GUI //////////////
+	// ////////////////////////////////////
+
 	private void resetLayout() {
 		LinearLayout layout = (LinearLayout) findViewById(R.id.stationsLayout);
 		layout.removeAllViews();
 		addButtonsToLayout();
 	}
-	
+
 	private void addButtonsToLayout() {
 		Collections.sort(buttons);
 		LinearLayout layout = (LinearLayout) findViewById(R.id.stationsLayout);
-		for (Button b: buttons) {
+		for (Button b : buttons) {
 			layout.addView(b);
 		}
 	}
 
-	@SuppressLint("NewApi") private void createButton(Station station) {
+	@SuppressLint("NewApi")
+	private void createButton(Station station) {
 		// create button
 		LayoutParams lparams = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
 		StationButton button = new StationButton(this, station);
@@ -90,19 +100,19 @@ public class AStations extends Activity {
 		buttons.add(button);
 		resetLayout();
 	}
-	
+
 	private void setBackgroundImage() {
 		LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        Location location = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-        
-        if (location == null) {
-        	return;
-        }
-        
+		Location location = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+
+		if (location == null) {
+			return;
+		}
+
 		ImageLookUp imageFetcher = new ImageLookUp(getApplicationContext()) {
 
 			@Override
-			void onSuccessfulFetch(Bitmap image) throws JSONException {
+			public void onSuccessfulFetch(Bitmap image) throws JSONException {
 				RelativeLayout rl = (RelativeLayout) findViewById(R.id.mainLayout);
 				Resources res = getResources();
 				BitmapDrawable ob = new BitmapDrawable(res, image);
@@ -112,15 +122,16 @@ public class AStations extends Activity {
 		imageFetcher.execute(((Double) location.getLatitude()).toString(),
 				((Double) location.getLongitude()).toString());
 	}
-	
-	///////////// PERIODICALLY CHECK BIKE AVAILABILITY
-	
+
+	// ////////////////////////////////////////////////////////////////
+	// /////////// PERIODICALLY CHECK BIKE AVAILABILITY ///////////////
+	// ////////////////////////////////////////////////////////////////
+
 	private void periodicallyCheckAvailability() {
-		final StationsLookUp availabilityChecker = new StationsLookUp(
-				getApplicationContext()) {
+		final StationsLookUp availabilityChecker = new StationsLookUp(getApplicationContext()) {
 
 			@Override
-			void onSuccessfulFetch(JSONObject result) throws JSONException {
+			public void onSuccessfulFetch(JSONObject result) throws JSONException {
 				for (StationButton b : buttons) {
 					String id = b.s.id;
 					b.s.available = getAvailableBikes(result, id);
@@ -133,14 +144,16 @@ public class AStations extends Activity {
 
 		availabilityChecker.runPeriodically(Conf.updateStationMiliseconds);
 	}
-		
-	///////////// PERIODICALLY CHECK LOCATION
+
+	// //////////////////////////////////////////////////////
+	// /////////// PERIODICALLY CHECK LOCATION //////////////
+	// //////////////////////////////////////////////////////
 
 	private void periodicallyCheckLocation() {
 		new LocationUpdater(this) {
 			@Override
-			void afterLocationChange(Location location) {
-				for (StationButton button: buttons) {
+			public void afterLocationChange(Location location) {
+				for (StationButton button : buttons) {
 					fetchDuration(location, button);
 				}
 			}
@@ -148,11 +161,10 @@ public class AStations extends Activity {
 	}
 
 	private void fetchDuration(final Location location, final StationButton button) {
-		DurationLookUp durationFetcher = new DurationLookUp(
-				getApplicationContext()) {
+		DurationLookUp durationFetcher = new DurationLookUp(getApplicationContext()) {
 
 			@Override
-			void onSuccessfulFetch(JSONObject result) throws JSONException {
+			public void onSuccessfulFetch(JSONObject result) throws JSONException {
 				button.durationText = getDurationText(result);
 				button.durationSeconds = getDurationSeconds(result);
 				button.updateText();
@@ -163,7 +175,9 @@ public class AStations extends Activity {
 		durationFetcher.execute(args);
 	}
 
-	///////////// MENU
+	// /////////////////////////////
+	// /////////// MENU ////////////
+	// /////////////////////////////
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
@@ -185,9 +199,11 @@ public class AStations extends Activity {
 			return super.onOptionsItemSelected(item);
 		}
 	}
-	
-	///////////// STATION BUTTON CLASS
-	
+
+	// ////////////////////////////////////////////////
+	// /////////// STATION BUTTON CLASS ///////////////
+	// ////////////////////////////////////////////////
+
 	private class StationButton extends Button implements Comparable<StationButton> {
 		// required
 		final Station s;
@@ -206,19 +222,20 @@ public class AStations extends Activity {
 			StationButtonListener buttonListener = new StationButtonListener();
 			this.setOnClickListener(buttonListener);
 		}
-		
+
 		public void updateText() {
 			String text = durationText + " " + s.name + " " + s.available + "/" + s.free;
 			this.setText(text);
 		}
-		
+
 		@Override
-	    public int compareTo(StationButton other){
+		public int compareTo(StationButton other) {
 			return this.durationSeconds.compareTo(other.durationSeconds);
-	    }
-		
+		}
+
 		class StationButtonListener implements View.OnClickListener {
 			private Intent intent = new Intent(AStations.this, AStation.class);
+
 			@Override
 			public void onClick(View v) {
 				Bundle bundle = s.getBundle();

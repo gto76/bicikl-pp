@@ -2,10 +2,10 @@ package si.gto76.bicikl_pp;
 
 import android.provider.BaseColumns;
 
-public final class AvailabilityReaderContract {
+public final class DbContract {
     // To prevent someone from accidentally instantiating the contract class,
     // give it an empty constructor.
-    public AvailabilityReaderContract() {}
+    public DbContract() {}
 
     /* Inner class that defines the table contents */
     public static abstract class Db implements BaseColumns {
@@ -15,6 +15,4 @@ public final class AvailabilityReaderContract {
         public static final String COLUMN_NAME_AVAILABLE = "available";
         public static final String COLUMN_NAME_FREE = "free";
     }
-    
-
 }

@@ -3,7 +3,11 @@ package si.gto76.bicikl_pp;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import si.gto76.bicikl_pp.AvailabilityReaderContract.Db;
+import si.gto76.bicikl_pp.DbContract.Db;
+import si.gto76.bicikl_pp.asynctasks.DurationLookUp;
+import si.gto76.bicikl_pp.asynctasks.ImageLookUp;
+import si.gto76.bicikl_pp.asynctasks.LocationUpdater;
+import si.gto76.bicikl_pp.asynctasks.StationsLookUp;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -56,7 +60,9 @@ public class AStation extends Activity {
 		durationText = bundle.getString("durationText", "fetching...");
 	}
 
-	// /////////// CREATE LAYOUT /////////////////
+	// //////////////////////////////////////////
+	// /////////// CREATE LAYOUT ////////////////
+	// //////////////////////////////////////////
 
 	private void createLayout() {
 		TextView title = (TextView) findViewById(R.id.title);
@@ -112,10 +118,12 @@ public class AStation extends Activity {
 		}
 	}
 
+	// ////////////////////////////////////////////////////
 	// /////// SHOW AVAILABILITY HISTORY - DB /////////////
+	// ////////////////////////////////////////////////////
 
 	private void addHistoricalData() {
-		AvailabilityReaderDbHelper aDbHelper = new AvailabilityReaderDbHelper(getApplicationContext());
+		DbHelper aDbHelper = new DbHelper(getApplicationContext());
 		SQLiteDatabase db = aDbHelper.getReadableDatabase();
 
 		String[] select = { Db.COLUMN_NAME_TIME, Db.COLUMN_NAME_AVAILABLE, Db.COLUMN_NAME_FREE };
@@ -142,13 +150,15 @@ public class AStation extends Activity {
 		createTextView(date + " " + available + "/" + free, layout, 555);
 	}
 
+	// /////////////////////////////////////////////
 	// ////////////// SET BACKGROUND ///////////////
+	// /////////////////////////////////////////////
 
 	private void setBackgroundImage() {
 		ImageLookUp imageFetcher = new ImageLookUp(getApplicationContext()) {
 
 			@Override
-			void onSuccessfulFetch(Bitmap image) throws JSONException {
+			public void onSuccessfulFetch(Bitmap image) throws JSONException {
 				RelativeLayout rl = (RelativeLayout) findViewById(R.id.mainLayout);
 				Resources res = getResources();
 				BitmapDrawable ob = new BitmapDrawable(res, image);
@@ -159,13 +169,15 @@ public class AStation extends Activity {
 				((Double) s.location.getLongitude()).toString());
 	}
 
-	// /////////// PERIODICALLY CHECK BIKE AVAILABILITY
+	// ////////////////////////////////////////////////////////////
+	// /////////// PERIODICALLY CHECK BIKE AVAILABILITY ///////////
+	// ////////////////////////////////////////////////////////////
 
 	private void periodicallyCheckAvailability() {
 		final StationsLookUp availabilityChecker = new StationsLookUp(getApplicationContext()) {
 
 			@Override
-			void onSuccessfulFetch(JSONObject result) throws JSONException {
+			public void onSuccessfulFetch(JSONObject result) throws JSONException {
 				s.available = getAvailableBikes(result, s.id);
 				s.free = getFreeSpots(result, s.id);
 				resetLayout();
@@ -176,12 +188,14 @@ public class AStation extends Activity {
 		availabilityChecker.runPeriodically(Conf.updateStationMiliseconds);
 	}
 
-	// /////////// PERIODICALLY CHECK LOCATION
+	// ////////////////////////////////////////////////////////
+	// /////////// PERIODICALLY CHECK LOCATION ////////////////
+	// ////////////////////////////////////////////////////////
 
 	private void periodicallyCheckLocation() {
 		new LocationUpdater(this) {
 			@Override
-			void afterLocationChange(Location location) {
+			public void afterLocationChange(Location location) {
 				if (s.location == null) {
 					return;
 				}
@@ -194,7 +208,7 @@ public class AStation extends Activity {
 		DurationLookUp durationFetcher = new DurationLookUp(getApplicationContext()) {
 
 			@Override
-			void onSuccessfulFetch(JSONObject result) throws JSONException {
+			public void onSuccessfulFetch(JSONObject result) throws JSONException {
 				String durationText = getDurationText(result);
 				TextView durationLabel = (TextView) findViewById(DURATION_TEXT_VIEW);
 				durationLabel.setText("Distance: " + durationText);
@@ -204,7 +218,9 @@ public class AStation extends Activity {
 		durationFetcher.execute(args);
 	}
 
-	// /////////// MENU
+	// ////////////////////////////
+	// /////////// MENU ///////////
+	// ////////////////////////////
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {

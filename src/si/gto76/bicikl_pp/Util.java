@@ -7,6 +7,7 @@ import java.util.List;
 
 import com.google.android.gms.maps.model.LatLng;
 
+import android.graphics.Color;
 import android.location.Location;
 
 public class Util {
@@ -15,6 +16,13 @@ public class Util {
 		Location location = new Location("util");
 		location.setLatitude(lat);
 		location.setLongitude(lng);
+		return location;
+	}
+	
+	public static Location getLocation(LatLng latLng) {
+		Location location = new Location("util");
+		location.setLatitude(latLng.latitude);
+		location.setLongitude(latLng.longitude);
 		return location;
 	}
 
@@ -67,5 +75,16 @@ public class Util {
 		Calendar calendar = Calendar.getInstance();
 		calendar.setTimeInMillis(milliSeconds);
 		return formatter.format(calendar.getTime());
+	}
+	
+	public static int getPathColor(Station origin, Station destionation) {
+		int weakestLink = Math.min(origin.available, destionation.free);
+		if (weakestLink >= Conf.acceptableAvailability) {
+			return Color.GREEN;
+		} else if (weakestLink > 0) {
+			return Color.YELLOW;
+		} else {
+			return Color.RED;
+		}
 	}
 }

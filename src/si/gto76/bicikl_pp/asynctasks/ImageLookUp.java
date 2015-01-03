@@ -1,4 +1,4 @@
-package si.gto76.bicikl_pp;
+package si.gto76.bicikl_pp.asynctasks;
 
 import java.io.InputStream;
 
@@ -12,6 +12,8 @@ import org.apache.http.util.EntityUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import si.gto76.bicikl_pp.Conf;
+
 import android.app.ActionBar;
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -22,10 +24,13 @@ import android.view.Display;
 import android.view.WindowManager;
 import android.widget.Toast;
 
-abstract class ImageLookUp extends AsyncTask<String, Void, Bitmap> {
+/**
+ * Used for getting images from Google Street View Image API.
+ * Its execute method needs two parameters: lat and lng of the location.
+ * You have to define onSuccessfulFetch method, that gets the Bitmap image when it arrives.
+ */
+public abstract class ImageLookUp extends AsyncTask<String, Void, Bitmap> {
 	
-	private static String KEY = "&key=AIzaSyCTBXziQ9NtE633QxhmSqEhRTgfgGldrrk";
-
 	final String address;
 	final Context context;
 
@@ -34,7 +39,7 @@ abstract class ImageLookUp extends AsyncTask<String, Void, Bitmap> {
 		this.address = "https://maps.googleapis.com/maps/api/streetview";
 	}
 
-	abstract void onSuccessfulFetch(Bitmap image) throws JSONException;
+	public abstract void onSuccessfulFetch(Bitmap image) throws JSONException;
 
 	@Override
 	protected void onPostExecute(Bitmap image) {
@@ -61,27 +66,13 @@ abstract class ImageLookUp extends AsyncTask<String, Void, Bitmap> {
 	protected Bitmap doInBackground(String... params) {
 		try {
 			Point size = getScreenSize();
-			System.out.println("#####"+size.x+" "+size.y);
-
 			String query = "?size="+size.x+"x"+size.y+"&location=" + params[0] + "," + params[1]
-					+ "&fov=90"+KEY; //&pitch=10
-
+					+ "&fov=90"+Conf.KEY;
 			String combinedAddress = address + query;
-			final HttpGet request = new HttpGet(combinedAddress);
-			request.addHeader("Accept", "image/jpeg");
-			final HttpClient client = new DefaultHttpClient();
-			final HttpResponse response = client.execute(request);
-			final HttpEntity entity = response.getEntity();
-			BufferedHttpEntity bufHttpEntity = new BufferedHttpEntity(entity);
-			
-			InputStream instream = bufHttpEntity.getContent();
-			Bitmap image = BitmapFactory.decodeStream(instream);
 			
 			InputStream in = new java.net.URL(combinedAddress).openStream();
-			Bitmap mIcon11 = BitmapFactory.decodeStream(in);
-			
-			
-			return mIcon11;
+			Bitmap image = BitmapFactory.decodeStream(in);
+			return image;
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

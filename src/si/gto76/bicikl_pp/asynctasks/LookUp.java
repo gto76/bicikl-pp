@@ -1,4 +1,4 @@
-package si.gto76.bicikl_pp;
+package si.gto76.bicikl_pp.asynctasks;
 
 import java.util.Timer;
 import java.util.TimerTask;
@@ -11,10 +11,17 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.util.EntityUtils;
 import org.json.JSONObject;
 
+import si.gto76.bicikl_pp.Conf;
+
 import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Handler;
 
+/**
+ * Basic extension of the AsyncTask, intended for querying JSON APIs.
+ * It receives the static part of the URI in the constructor and query part in the first parameter of the execute function.
+ * The extending class needs to define onPostExecute function.
+ */
 abstract class LookUp extends AsyncTask<String, Void, JSONObject> {
 
 	final String address;

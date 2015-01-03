@@ -1,16 +1,22 @@
 package si.gto76.bicikl_pp;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import si.gto76.bicikl_pp.asynctasks.ClosestStationsLookUp;
+import si.gto76.bicikl_pp.asynctasks.DurationLookUp;
+import si.gto76.bicikl_pp.asynctasks.StationsLookUp;
 
 import android.content.Intent;
 import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
+import android.support.v4.util.Pair;
 import android.view.Menu;
 import android.view.MenuItem;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -26,6 +32,10 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
+
+////////////////////
+//// GOOGLE MAP ////
+////////////////////
 
 public class AMap extends FragmentActivity {
 
@@ -43,7 +53,9 @@ public class AMap extends FragmentActivity {
 		drawPolylineIfSent();
 	}
 
-	// ///////////////////////
+	// ////////////////////////////////
+	// ////////// SET MAP /////////////
+	// ////////////////////////////////
 
 	private void setMap() {
 		map = ((MapFragment) getFragmentManager().findFragmentById(R.id.map)).getMap();
@@ -99,13 +111,15 @@ public class AMap extends FragmentActivity {
 		});
 	}
 
-	// ////////////////////////
+	// /////////////////////////////////
+	// ////////// SET MARKERS //////////
+	// /////////////////////////////////
 
 	private void setMarkers() {
 		final StationsLookUp stationsFetcher = new StationsLookUp(getApplicationContext()) {
 
 			@Override
-			void onSuccessfulFetch(final JSONObject result) throws JSONException {
+			public void onSuccessfulFetch(final JSONObject result) throws JSONException {
 				for (final String id : getIds(result)) {
 					String name = getName(result, id);
 					LatLng latLng = getLatLng(result, id);
@@ -138,7 +152,9 @@ public class AMap extends FragmentActivity {
 		}
 	}
 
-	// sets listener that listens for clicks on the info window
+	/**
+	 * sets listener that listens for clicks on the marker info window
+	 */
 	private void setOnInfoClickListener(final JSONObject result) {
 		map.setOnInfoWindowClickListener(new OnInfoWindowClickListener() {
 
@@ -157,7 +173,9 @@ public class AMap extends FragmentActivity {
 		});
 	}
 
-	// ///////// DESTINATION MARKER LISTENERS /////////////////
+	// ////////////////////////////////////////////////
+	// ///////// DESTINATION MARKER LISTENERS /////////
+	// ////////////////////////////////////////////////
 
 	private void setDestinationMarkerListeners() {
 		// CREATE:
@@ -170,7 +188,9 @@ public class AMap extends FragmentActivity {
 				}
 				destinationMarker = map.addMarker(new MarkerOptions().position(latLng).draggable(true)
 						.icon(BitmapDescriptorFactory.fromResource(R.drawable.finish_flag_64)));
+				drawOptimalPath();
 			}
+
 		});
 		// DELETE:
 		map.setOnMarkerClickListener(new OnMarkerClickListener() {
@@ -186,7 +206,50 @@ public class AMap extends FragmentActivity {
 		});
 	}
 
+	// /////////////////////////////
+	// ///////// DRAW PATH /////////
+	// /////////////////////////////
+
+	private void drawOptimalPath() {
+		Location origin = map.getMyLocation();
+		Location destination = Util.getLocation(destinationMarker.getPosition());
+		ClosestStationsLookUp stationsFetcher = new ClosestStationsLookUp(getApplicationContext(), origin,
+				destination, 1, 1, false) {
+
+			@Override
+			public void onSuccessfulFetch(List<Pair<Station, Station>> stationPairs) {
+				Pair<Station, Station> stations = stationPairs.get(0);
+				drawEtapes(origin, stations.first, stations.second, destination);
+			}
+		};
+		stationsFetcher.execute();
+	}
+
+	private void drawEtapes(Location origin, Station first, Station second, Location destination) {
+		int color = Util.getPathColor(first, second);
+		drawEtape(origin, first.location, color);
+		drawEtape(first.location, second.location, color);
+		drawEtape(second.location, destination, color);
+	}
+
+	private void drawEtape(Location origin, Location destination, final int color) {
+		DurationLookUp polylineFetcher = new DurationLookUp(getApplicationContext()) {
+
+			@Override
+			public void onSuccessfulFetch(JSONObject result) throws JSONException {
+				String polyline = getPolyline(result);
+				PolylineOptions polyOptions = new PolylineOptions().addAll(Util.decodePoly(polyline))
+						.geodesic(true).width(4).color(color);
+				map.addPolyline(polyOptions);
+			}
+		};
+		String[] args = DurationLookUp.getVarArgs(origin, destination);
+		polylineFetcher.execute(args);
+	}
+
+	// ///////////////////////
 	// //////// MENU /////////
+	// ///////////////////////
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
@@ -199,10 +262,6 @@ public class AMap extends FragmentActivity {
 		Intent intent;
 		int itemId = item.getItemId();
 		if (itemId == R.id.action_settings) {
-			return true;
-		} else if (itemId == R.id.map) {
-			intent = new Intent(this, AMap.class);
-			startActivity(intent);
 			return true;
 		} else if (itemId == R.id.stations) {
 			intent = new Intent(this, AStations.class);

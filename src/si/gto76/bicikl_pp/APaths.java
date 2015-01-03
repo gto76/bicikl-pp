@@ -8,6 +8,11 @@ import java.util.List;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import si.gto76.bicikl_pp.asynctasks.ClosestStationsLookUp;
+import si.gto76.bicikl_pp.asynctasks.DurationLookUp;
+import si.gto76.bicikl_pp.asynctasks.ImageLookUp;
+import si.gto76.bicikl_pp.asynctasks.StationsLookUp;
+
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.LatLngBounds.Builder;
 
@@ -30,6 +35,10 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 
+///////////////////////
+//// LIST OF PATHS ////
+///////////////////////
+
 public class APaths extends Activity {
 
 	private Location origin;
@@ -43,7 +52,7 @@ public class APaths extends Activity {
 		setContentView(R.layout.activity_paths);
 
 		initializeFields();
-		getOriginStations();
+		buildGui();
 		setBackgroundImage();
 	}
 
@@ -58,151 +67,44 @@ public class APaths extends Activity {
 		destination = Util.getLocation(destinatonLat, destinationLng);
 	}
 
-	private void getOriginStations() {
-		final StationsLookUp stationsFetcher = new StationsLookUp(getApplicationContext()) {
+	// /////////////////////////////////
+	// /////////// BUILD GUI ///////////
+	// /////////////////////////////////
+
+	private void buildGui() {
+		final ClosestStationsLookUp stationsFetcher = new ClosestStationsLookUp(getApplicationContext(),
+				origin, destination, Conf.NUMBER_OF_GREENS, Conf.acceptableAvailability, true) {
+
 			@Override
-			void onSuccessfulFetch(JSONObject result) throws JSONException {
-				List<Pair<Float, Station>> distancesToOrigin = getDistances(result, origin);
-				List<Pair<Float, Station>> distancesToDestination = getDistances(result, destination);
-				
-				// 1. look for closest stations from origin until two of the green ones are found
-				distancesToOrigin = trancuateDistances(distancesToOrigin, new AvailableOrFree() {
-					
-					@Override
-					public int getValue(Station station) {
-						return station.available;
-					}
-				});
-				
-				// 2. look for closest stations from destination until two of the green ones are found
-				distancesToDestination = trancuateDistances(distancesToDestination, new AvailableOrFree() {
-					
-					@Override
-					public int getValue(Station station) {
-						return station.free;
-					}
-				});
-				
-				// 3. get paths containing all of the above combinations
-				createButtonsFromBestPaths(distancesToOrigin, distancesToDestination);
+			public void onSuccessfulFetch(List<Pair<Station, Station>> stationPairs) {
+				createButtonsFromPaths(stationPairs);
 				resetLayout();
-				
-				// 4. for each button calculate duration
-				for (PathButton button: buttons) {
+
+				// for each path calculate duration
+				for (PathButton button : buttons) {
 					calculateDuration(button, origin, destination);
 				}
-			}
-
-			private void calculateDuration(final PathButton button, Location origin, Location destination) {
-				// //// 1. get walking time from origin to originStation
-				DurationLookUp durationWalk1Fetcher = new DurationLookUp(getApplicationContext()) {
-
-					@Override
-					void onSuccessfulFetch(JSONObject result) throws JSONException {
-						button.durationWalk1 = getDurationSeconds(result);
-						button.polylines[0] = getPolyline(result);
-						updateTextAndResetLayout(button);
-					}
-
-				};
-				String[] args = DurationLookUp.getVarArgs(origin, button.originStation.location);
-				durationWalk1Fetcher.execute(args);
-
-				// //// 2. get distance from originStation to DestinationStation and calculate cycling time
-				DurationLookUp durationCycleFetcher = new DurationLookUp(getApplicationContext()) {
-
-					@Override
-					void onSuccessfulFetch(JSONObject result) throws JSONException {
-						int distanceCycle = getDistanceMeters(result);
-						int secondsCycle = (int) (distanceCycle / (Conf.cyclingSpeed * 1000.0 / 3600));
-						button.durationCycle = secondsCycle;
-						button.polylines[1] = getPolyline(result);
-						updateTextAndResetLayout(button);
-					}
-				};
-				args = DurationLookUp.getVarArgs(button.originStation.location, button.destinationStation.location);
-				durationCycleFetcher.execute(args);
-
-				// //// 3. get walking time from destinationStation to destination
-				DurationLookUp durationWalk2Fetcher = new DurationLookUp(getApplicationContext()) {
-
-					@Override
-					void onSuccessfulFetch(JSONObject result) throws JSONException {
-						button.durationWalk2 = getDurationSeconds(result);
-						button.polylines[2] = getPolyline(result);
-						updateTextAndResetLayout(button);
-					}
-				};
-				args = DurationLookUp.getVarArgs(button.destinationStation.location, destination);
-				durationWalk2Fetcher.execute(args);
-			}
-			
-			private void updateTextAndResetLayout(PathButton button) {
-				button.updateText();
-				if (button.allSet()) {
-					resetLayout();
-				}
-			}
-
-			private List<Pair<Float, Station>> getDistances(JSONObject result, Location location)
-					throws JSONException {
-				List<Pair<Float, Station>> distances = new ArrayList<Pair<Float, Station>>();
-				for (String id : getIds(result)) {
-					Station station = getStationObject(result, id);
-					float distance = station.location.distanceTo(location);
-					distances.add(Pair.create(distance, station));
-				}
-				sortDistances(distances);
-				return distances;
-			}
-
-			private void sortDistances(List<Pair<Float, Station>> distances) {
-				Collections.sort(distances, new Comparator<Pair<Float, Station>>() {
-					@Override
-					public int compare(Pair<Float, Station> lhs, Pair<Float, Station> rhs) {
-						return lhs.first.compareTo(rhs.first);
-					}
-				});
 			}
 		};
 		stationsFetcher.execute();
 	}
-	
-	interface AvailableOrFree {
-        int getValue(Station station);
-    }
 
-	private List<Pair<Float, Station>> trancuateDistances(List<Pair<Float, Station>> distancesToOrigin, AvailableOrFree f) {
-		int remainingGreens = Conf.NUMBER_OF_GREENS;
-		int i = 0;
-		for (Pair<Float, Station> distanceAndStation : distancesToOrigin) {
-			Station station = distanceAndStation.second;
-			if (f.getValue(station) >= Conf.acceptableAvailability) {
-				remainingGreens--;
-			}
-			i++;
-			if (remainingGreens == 0) {
-				break;
-			}
-		}
-		return distancesToOrigin.subList(0, i);
-	}
-	
-	private void createButtonsFromBestPaths(List<Pair<Float, Station>> distancesToOrigin,
-			List<Pair<Float, Station>> distancesToDestination) {
-		// for every origin station
-		for (Pair<Float, Station> distanceAndStation : distancesToOrigin) {
-			Station originStation = distanceAndStation.second;
-			for (Pair<Float, Station> distanceAndStation2 : distancesToDestination) {
-				Station destinationStation = distanceAndStation2.second;
-				if (originStation != destinationStation) {
-					createButton(getApplicationContext(), originStation, destinationStation);
-				}
-			}
+	private void createButtonsFromPaths(List<Pair<Station, Station>> stationPairs) {
+		for (Pair<Station, Station> stationPair : stationPairs) {
+			createButton(getApplicationContext(), stationPair.first, stationPair.second);
 		}
 	}
 
-	// /////////// BUILD GUI
+	@SuppressLint("NewApi")
+	private void createButton(Context context, Station originStation, Station destinationStation) {
+		// create button
+		LayoutParams lparams = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+		final PathButton button = new PathButton(context, originStation, destinationStation);
+		button.setLayoutParams(lparams);
+		button.setAlpha((float) 0.75);
+		// add button to list
+		buttons.add(button);
+	}
 
 	private void resetLayout() {
 		LinearLayout layout = (LinearLayout) findViewById(R.id.pathsLayout);
@@ -213,24 +115,72 @@ public class APaths extends Activity {
 		}
 	}
 
-	@SuppressLint("NewApi")
-	private void createButton(Context context, Station originStation, Station destinationStation) {
-		// create button
-		LayoutParams lparams = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
-		final PathButton button = new PathButton(context, originStation, destinationStation);
-		button.setLayoutParams(lparams);
-		button.setAlpha((float)0.75);
-		// add button to list
-		buttons.add(button);
+	// //////////////////////////////////////////////////////////////////
+	// //////////// FETCH PATH DURATIONS AND UPDATE BUTTONS /////////////
+	// //////////////////////////////////////////////////////////////////
+
+	private void calculateDuration(final PathButton button, Location origin, Location destination) {
+		// //// 1. get walking time from origin to originStation
+		DurationLookUp durationWalk1Fetcher = new DurationLookUp(getApplicationContext()) {
+
+			@Override
+			public void onSuccessfulFetch(JSONObject result) throws JSONException {
+				button.durationWalk1 = getDurationSeconds(result);
+				button.polylines[0] = getPolyline(result);
+				updateTextAndResetLayout(button);
+			}
+
+		};
+		String[] args = DurationLookUp.getVarArgs(origin, button.originStation.location);
+		durationWalk1Fetcher.execute(args);
+
+		// //// 2. get distance from originStation to DestinationStation
+		// and calculate cycling time
+		DurationLookUp durationCycleFetcher = new DurationLookUp(getApplicationContext()) {
+
+			@Override
+			public void onSuccessfulFetch(JSONObject result) throws JSONException {
+				int distanceCycle = getDistanceMeters(result);
+				int secondsCycle = (int) (distanceCycle / (Conf.cyclingSpeed * 1000.0 / 3600));
+				button.durationCycle = secondsCycle;
+				button.polylines[1] = getPolyline(result);
+				updateTextAndResetLayout(button);
+			}
+		};
+		args = DurationLookUp.getVarArgs(button.originStation.location, button.destinationStation.location);
+		durationCycleFetcher.execute(args);
+
+		// //// 3. get walking time from destinationStation to
+		// destination
+		DurationLookUp durationWalk2Fetcher = new DurationLookUp(getApplicationContext()) {
+
+			@Override
+			public void onSuccessfulFetch(JSONObject result) throws JSONException {
+				button.durationWalk2 = getDurationSeconds(result);
+				button.polylines[2] = getPolyline(result);
+				updateTextAndResetLayout(button);
+			}
+		};
+		args = DurationLookUp.getVarArgs(button.destinationStation.location, destination);
+		durationWalk2Fetcher.execute(args);
 	}
 
+	private void updateTextAndResetLayout(PathButton button) {
+		button.updateText();
+		if (button.allSet()) {
+			resetLayout();
+		}
+	}
 
-	
+	// //////////////////////////////////
+	// /////// BACKGROUND IMAGE /////////
+	// //////////////////////////////////
+
 	private void setBackgroundImage() {
 		ImageLookUp imageFetcher = new ImageLookUp(getApplicationContext()) {
 
 			@Override
-			void onSuccessfulFetch(Bitmap image) throws JSONException {
+			public void onSuccessfulFetch(Bitmap image) throws JSONException {
 				if (image == null) {
 					return;
 				}
@@ -244,7 +194,9 @@ public class APaths extends Activity {
 				((Double) destination.getLongitude()).toString());
 	}
 
-	// ///////
+	// /////////////////////
+	// /////// MENU ////////
+	// /////////////////////
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
@@ -271,14 +223,13 @@ public class APaths extends Activity {
 		}
 	}
 
-	// ######
-	// ###### PATH BUTTON CLASS
-	// ######
+	// ///////////////////////////////////////
+	// ////////// PATH BUTTON CLASS //////////
+	// ///////////////////////////////////////
 
 	/**
-	 * Button that contains complete info about path. A path consists of four
-	 * checkpoints: current location, origin station, destination station and
-	 * destination.
+	 * Button that contains complete info about path. A path consists of four checkpoints: current location,
+	 * origin station, destination station and destination.
 	 */
 	private class PathButton extends Button implements Comparable<PathButton> {
 		// required
@@ -289,7 +240,7 @@ public class APaths extends Activity {
 		Integer durationWalk1;
 		Integer durationCycle;
 		Integer durationWalk2;
-		String[] polylines = new String[3]; 
+		String[] polylines = new String[3];
 
 		public PathButton(Context context, Station originStation, Station destinationStation) {
 			super(context);
@@ -299,31 +250,24 @@ public class APaths extends Activity {
 			updateText();
 			addListener();
 		}
-		
-		////////////// COLOR
+
+		// //////////// COLOR
 
 		private void setColor() {
-			int weakestLink = Math.min(originStation.available, destinationStation.free);
-			if (weakestLink >= Conf.acceptableAvailability) {
-				color = Color.GREEN;
-			} else if (weakestLink > 0) {
-				color = Color.YELLOW;
-			} else {
-				color = Color.RED;
-			}
+			int color = Util.getPathColor(originStation, destinationStation);
 			this.setBackgroundColor(color);
 		}
 
-		////////////// TEXT
+		// //////////// TEXT
 
 		public void updateText() {
-			String text = getDurationText() + " | " + toText(durationWalk1) + " -> "
-					+ originStation.name + " " + originStation.available + " -> " + toText(durationCycle)
-					+ " -> " + destinationStation.name + " " + destinationStation.free + " -> "
+			String text = getDurationText() + " | " + toText(durationWalk1) + " -> " + originStation.name
+					+ " " + originStation.available + " -> " + toText(durationCycle) + " -> "
+					+ destinationStation.name + " " + destinationStation.free + " -> "
 					+ toText(durationWalk2);
 			this.setText(text);
 		}
-		
+
 		private String getDurationText() {
 			if (!allSet()) {
 				return "fetchig...";
@@ -331,14 +275,14 @@ public class APaths extends Activity {
 			int seconds = getDurationSeconds();
 			return toText(seconds);
 		}
-		
+
 		private Integer getDurationSeconds() {
 			if (!allSet()) {
 				return Integer.MAX_VALUE;
 			}
 			return durationWalk1 + durationCycle + durationWalk2;
 		}
-		
+
 		private boolean allSet() {
 			return durationWalk1 != null && durationCycle != null && durationWalk2 != null;
 		}
@@ -349,16 +293,17 @@ public class APaths extends Activity {
 			}
 			return Util.secondsToText(seconds);
 		}
-		
-		////////// SHOW ON MAP LISTENER
+
+		// //////// SHOW ON MAP LISTENER
 
 		private void addListener() {
 			PathButtonListener buttonListener = new PathButtonListener();
 			this.setOnClickListener(buttonListener);
 		}
-		
+
 		class PathButtonListener implements View.OnClickListener {
 			private Intent intent = new Intent(APaths.this, AMap.class);
+
 			@Override
 			public void onClick(View v) {
 				Bundle bundle = new Bundle();

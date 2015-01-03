@@ -1,8 +1,10 @@
-package si.gto76.bicikl_pp;
+package si.gto76.bicikl_pp.asynctasks;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import si.gto76.bicikl_pp.Conf;
 
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
@@ -11,9 +13,14 @@ import android.content.Context;
 import android.location.Location;
 import android.widget.Toast;
 
-abstract class DurationLookUp extends LookUp {
+/**
+ * Used for getting info from Google directions API.
+ * Its execute method needs four parameters: lat/lng of origin and lat/lng of destination.
+ * You have to define onSuccessfulFetch method, that gets the JSON result when it arrives.
+ */
+public abstract class DurationLookUp extends LookUp {
 
-	abstract void onSuccessfulFetch(JSONObject result) throws JSONException;
+	public abstract void onSuccessfulFetch(JSONObject result) throws JSONException;
 
 	public DurationLookUp(Context ctx) {
 		super(ctx, "https://maps.google.com/maps/api/directions/json");
@@ -94,7 +101,7 @@ abstract class DurationLookUp extends LookUp {
 	// // UTIL
 
 	/**
-	 * Converts two locations in string array of lenght 4, containing their lats
+	 * Converts two locations in string array of length 4, containing their lats
 	 * and lngs. Useful when calling execute.
 	 */
 	public static String[] getVarArgs(Location loc1, Location loc2) {
