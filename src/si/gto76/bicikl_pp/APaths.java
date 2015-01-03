@@ -2,7 +2,6 @@ package si.gto76.bicikl_pp;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 import org.json.JSONException;
@@ -11,11 +10,6 @@ import org.json.JSONObject;
 import si.gto76.bicikl_pp.asynctasks.ClosestStationsLookUp;
 import si.gto76.bicikl_pp.asynctasks.DurationLookUp;
 import si.gto76.bicikl_pp.asynctasks.ImageLookUp;
-import si.gto76.bicikl_pp.asynctasks.StationsLookUp;
-
-import com.google.android.gms.maps.model.LatLngBounds;
-import com.google.android.gms.maps.model.LatLngBounds.Builder;
-
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ActionBar.LayoutParams;
@@ -23,7 +17,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
-import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.location.Location;
 import android.os.Bundle;
@@ -254,7 +247,7 @@ public class APaths extends Activity {
 		// //////////// COLOR
 
 		private void setColor() {
-			int color = Util.getPathColor(originStation, destinationStation);
+			color = Util.getPathColor(originStation, destinationStation);
 			this.setBackgroundColor(color);
 		}
 

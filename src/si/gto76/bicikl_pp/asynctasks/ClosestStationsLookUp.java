@@ -8,9 +8,6 @@ import java.util.List;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.google.android.gms.internal.or;
-
-import si.gto76.bicikl_pp.APaths;
 import si.gto76.bicikl_pp.Conf;
 import si.gto76.bicikl_pp.Station;
 
@@ -42,9 +39,7 @@ public abstract class ClosestStationsLookUp extends StationsLookUp {
 
 	public abstract void onSuccessfulFetch(List<Pair<Station, Station>> stationPairs);
 
-	interface AvailableOrFree {
-		int getValue(Station station);
-	}
+
 
 	@Override
 	public void onSuccessfulFetch(JSONObject result) throws JSONException {
@@ -74,8 +69,14 @@ public abstract class ClosestStationsLookUp extends StationsLookUp {
 
 		List<Pair<Station, Station>> stationPairs = getStationPairs(candidateOriginStations,
 				candidateDestinationStations);
+		
+		orderPathsByDurationEstimate(stationPairs);
 
 		onSuccessfulFetch(stationPairs);
+	}
+
+	interface AvailableOrFree {
+		int getValue(Station station);
 	}
 
 	private static List<Pair<Float, Station>> getAirDistances(JSONObject result, Location location)
@@ -123,12 +124,41 @@ public abstract class ClosestStationsLookUp extends StationsLookUp {
 		List<Pair<Station, Station>> pairs = new ArrayList<Pair<Station, Station>>();
 		for (Station originStation : originStations) {
 			for (Station destinationStation : destinationStations) {
-				if (originStation != destinationStation) {
+				if (!originStation.equals(destinationStation)) {
 					pairs.add(new Pair<Station, Station>(originStation, destinationStation));
 				}
 			}
 		}
 		return pairs;
+	}
+	
+	
+	private void orderPathsByDurationEstimate(List<Pair<Station, Station>> stationPairs) {
+		List<Pair<Float, Pair<Station, Station>>> pathsByAirDistance = new ArrayList<Pair<Float, Pair<Station, Station>>>();
+		for (Pair<Station, Station> path: stationPairs) {
+			float durationEstimate = getDurationEstimate(path);
+			pathsByAirDistance.add(new Pair<Float, Pair<Station, Station>>(durationEstimate, path));
+		}
+		Collections.sort(pathsByAirDistance, new Comparator<Pair<Float, Pair<Station, Station>>>() {
+
+			@Override
+			public int compare(Pair<Float, Pair<Station, Station>> lhs,
+					Pair<Float, Pair<Station, Station>> rhs) {
+				return lhs.first.compareTo(rhs.first);
+			}
+		});
+		stationPairs.clear();
+		for (Pair<Float, Pair<Station, Station>> pathData :pathsByAirDistance) {
+			stationPairs.add(pathData.second);
+		}
+	}
+
+	private float getDurationEstimate(Pair<Station, Station> path) {
+		float walkingDistance1 = origin.distanceTo(path.first.location);
+		float cyclingDistance = path.first.location.distanceTo(path.second.location);
+		float walkingDistance2 = path.second.location.distanceTo(destination);
+		float cyclingFactor = (float) (5.0 / Conf.cyclingSpeed);
+		return walkingDistance1 + cyclingDistance * cyclingFactor + walkingDistance2;
 	}
 
 }

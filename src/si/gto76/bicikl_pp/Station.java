@@ -50,8 +50,14 @@ public class Station {
 		bundle.putInt("free", free);
 		return bundle;
 	}
-	
+
 	public LatLng getLatLng() {
 		return new LatLng(location.getLatitude(), location.getLongitude());
+	}
+	
+	@Override
+	public boolean equals(Object o) {
+		Station other = (Station) o;
+		return id.equals(other.id);
 	}
 }

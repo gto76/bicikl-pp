@@ -1,5 +1,6 @@
 package si.gto76.bicikl_pp;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +43,7 @@ public class AMap extends FragmentActivity {
 	private GoogleMap map;
 	private Marker destinationMarker;
 	private Map<Marker, String> stationIds = new HashMap<Marker, String>();
+	private List<Polyline> polylines = new ArrayList<Polyline>();
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -51,6 +53,8 @@ public class AMap extends FragmentActivity {
 		setMap();
 		zoomToStationIfSent();
 		drawPolylineIfSent();
+		setMarkers();
+		setDestinationMarkerListeners();
 	}
 
 	// ////////////////////////////////
@@ -64,8 +68,6 @@ public class AMap extends FragmentActivity {
 		map.setMapType(GoogleMap.MAP_TYPE_NORMAL);
 		map.setMyLocationEnabled(true);
 
-		setMarkers();
-		setDestinationMarkerListeners();
 	}
 
 	private void zoomToStationIfSent() {
@@ -84,16 +86,18 @@ public class AMap extends FragmentActivity {
 		if (bundle == null || !bundle.containsKey("polylines")) {
 			return;
 		}
-		String[] polylines = bundle.getStringArray("polylines");
+		String[] polylinesAsStrings = bundle.getStringArray("polylines");
 		int color = bundle.getInt("color");
 		LatLngBounds.Builder boundsBuilder = LatLngBounds.builder();
-		for (String polyline : polylines) {
+		for (String polyline : polylinesAsStrings) {
 			if (polyline == null) {
 				continue;
 			}
 			PolylineOptions polyOptions = new PolylineOptions().addAll(Util.decodePoly(polyline))
-					.geodesic(true).width(4).color(color);
+					.geodesic(true).width(Conf.POLYLINE_WIDTH).color(color);
+
 			Polyline line = map.addPolyline(polyOptions);
+			polylines.add(line);
 			for (LatLng point : line.getPoints()) {
 				boundsBuilder = boundsBuilder.include(point);
 			}
@@ -188,6 +192,7 @@ public class AMap extends FragmentActivity {
 				}
 				destinationMarker = map.addMarker(new MarkerOptions().position(latLng).draggable(true)
 						.icon(BitmapDescriptorFactory.fromResource(R.drawable.finish_flag_64)));
+				clearPolylines();
 				drawOptimalPath();
 			}
 
@@ -199,11 +204,19 @@ public class AMap extends FragmentActivity {
 			public boolean onMarkerClick(Marker marker) {
 				if (marker.equals(destinationMarker)) {
 					destinationMarker.remove();
+					clearPolylines();
 					return true;
 				}
 				return false;
 			}
 		});
+	}
+
+	private void clearPolylines() {
+		for (Polyline line : polylines) {
+			line.remove();
+		}
+		polylines.clear();
 	}
 
 	// /////////////////////////////
@@ -214,7 +227,7 @@ public class AMap extends FragmentActivity {
 		Location origin = map.getMyLocation();
 		Location destination = Util.getLocation(destinationMarker.getPosition());
 		ClosestStationsLookUp stationsFetcher = new ClosestStationsLookUp(getApplicationContext(), origin,
-				destination, 1, 1, false) {
+				destination, 3, 1, false) {
 
 			@Override
 			public void onSuccessfulFetch(List<Pair<Station, Station>> stationPairs) {
@@ -239,8 +252,9 @@ public class AMap extends FragmentActivity {
 			public void onSuccessfulFetch(JSONObject result) throws JSONException {
 				String polyline = getPolyline(result);
 				PolylineOptions polyOptions = new PolylineOptions().addAll(Util.decodePoly(polyline))
-						.geodesic(true).width(4).color(color);
-				map.addPolyline(polyOptions);
+						.geodesic(true).width(Conf.POLYLINE_WIDTH).color(color);
+				Polyline line = map.addPolyline(polyOptions);
+				polylines.add(line);
 			}
 		};
 		String[] args = DurationLookUp.getVarArgs(origin, destination);
