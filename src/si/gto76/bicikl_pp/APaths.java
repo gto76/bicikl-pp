@@ -15,8 +15,10 @@ import android.app.Activity;
 import android.app.ActionBar.LayoutParams;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.location.Location;
 import android.os.Bundle;
@@ -95,6 +97,7 @@ public class APaths extends Activity {
 		final PathButton button = new PathButton(context, originStation, destinationStation);
 		button.setLayoutParams(lparams);
 		button.setAlpha((float) 0.75);
+		button.setTextColor(Color.WHITE);
 		// add button to list
 		buttons.add(button);
 	}
@@ -202,6 +205,8 @@ public class APaths extends Activity {
 		Intent intent;
 		int itemId = item.getItemId();
 		if (itemId == R.id.action_settings) {
+			intent = new Intent(this, AOptions.class);
+			startActivity(intent);
 			return true;
 		} else if (itemId == R.id.map) {
 			intent = new Intent(this, AMap.class);

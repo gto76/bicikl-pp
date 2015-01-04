@@ -18,6 +18,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.location.Location;
 import android.location.LocationManager;
@@ -89,6 +90,7 @@ public class AStations extends Activity {
 		LayoutParams lparams = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
 		StationButton button = new StationButton(this, station);
 		button.setLayoutParams(lparams);
+		button.setTextColor(Color.WHITE);
 		// add button to list
 		buttons.add(button);
 		resetLayout();
@@ -183,6 +185,8 @@ public class AStations extends Activity {
 		Intent intent;
 		int itemId = item.getItemId();
 		if (itemId == R.id.action_settings) {
+			intent = new Intent(this, AOptions.class);
+			startActivity(intent);
 			return true;
 		} else if (itemId == R.id.map) {
 			intent = new Intent(this, AMap.class);

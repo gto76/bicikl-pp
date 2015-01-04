@@ -31,11 +31,12 @@ public class Conf {
 	public static final String MINUTES_ABR = "mins";
 
 	////////////////
+
+	public static int cyclingSpeed = CYCLING_SPEED;
+	public static int acceptableAvailability = ACCEPTABLE_AVAILABILITY;
 	
 	public static int updateStationMiliseconds = UPDATE_STATION_MILISECONDS;
 	public static int updateLocationMiliseconds = UPDATE_LOCATION_MILISECONDS;
 	public static int updateLocationMeters = UPDATE_LOCATION_METERS;
-	public static int cyclingSpeed = CYCLING_SPEED;
-
-	public static int acceptableAvailability = ACCEPTABLE_AVAILABILITY;
+	
 }

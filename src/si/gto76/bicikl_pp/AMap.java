@@ -276,6 +276,8 @@ public class AMap extends FragmentActivity {
 		Intent intent;
 		int itemId = item.getItemId();
 		if (itemId == R.id.action_settings) {
+			intent = new Intent(this, AOptions.class);
+			startActivity(intent);
 			return true;
 		} else if (itemId == R.id.stations) {
 			intent = new Intent(this, AStations.class);
