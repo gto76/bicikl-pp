@@ -1,6 +1,8 @@
 package si.gto76.bicikl_pp;
 
+import si.gto76.bicikl_pp.DbContract.DbOptions;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.Menu;
@@ -16,39 +18,36 @@ public class AOptions extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_aoptions);
 
-		initializeViews();
+		createGui();
 	}
 
-	private void initializeViews() {
+	private void createGui() {
 		NumberPicker speedPicker = (NumberPicker) this.findViewById(R.id.numberPickerSpeed);
-		speedPicker.setMaxValue(40);
-		speedPicker.setMinValue(5);
+		speedPicker.setMaxValue(Conf.MAX_SPEED);
+		speedPicker.setMinValue(Conf.MIN_SPEED);
 		speedPicker.setValue(Conf.cyclingSpeed);
-		//speedPicker.setDescendantFocusability(NumberPicker.FOCUS_BLOCK_DESCENDANTS);
-		speedPicker.setOnValueChangedListener(new OnValueChangeListener() {
-
-			@Override
-			public void onValueChange(NumberPicker picker, int oldVal, int newVal) {
-				Conf.cyclingSpeed = newVal;
-			}
-		});
+		// speedPicker.setDescendantFocusability(NumberPicker.FOCUS_BLOCK_DESCENDANTS);
 
 		NumberPicker availabilityPicker = (NumberPicker) this.findViewById(R.id.numberPickerAvailability);
-		availabilityPicker.setMaxValue(12);
-		availabilityPicker.setMinValue(1);
+		availabilityPicker.setMaxValue(Conf.MAX_AVAILABILITY);
+		availabilityPicker.setMinValue(Conf.MIN_AVAILABILITY);
 		availabilityPicker.setValue(Conf.acceptableAvailability);
-		//speedPicker.setDescendantFocusability(NumberPicker.FOCUS_BLOCK_DESCENDANTS);
-		availabilityPicker.setOnValueChangedListener(new OnValueChangeListener() {
-
-			@Override
-			public void onValueChange(NumberPicker picker, int oldVal, int newVal) {
-				Conf.acceptableAvailability = newVal;
-			}
-		});
+		// speedPicker.setDescendantFocusability(NumberPicker.FOCUS_BLOCK_DESCENDANTS);
 	}
 
-	public void close(View v) {
+	public void okButtonPressed(View v) {
+		Context context = getApplicationContext();
+		Conf.cyclingSpeed = writeToDb(context, R.id.numberPickerSpeed, DbOptions.OPTION_ID_CYCLING_SPEED);
+		Conf.acceptableAvailability = writeToDb(context, R.id.numberPickerAvailability,
+				DbOptions.OPTION_ID_ACCEPTABLE_AVAILABILITY);
 		finish();
+	}
+
+	private int writeToDb(Context context, int viewId, String optionId) {
+		NumberPicker numberPicker = (NumberPicker) this.findViewById(viewId);
+		int value = numberPicker.getValue();
+		DbOptionsApi.writeOptionValueToDb(context, optionId, value);
+		return value;
 	}
 
 	// ////////////////////////////

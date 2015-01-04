@@ -10,7 +10,7 @@ import org.json.JSONObject;
 import si.gto76.bicikl_pp.DbHelper;
 import si.gto76.bicikl_pp.Station;
 import si.gto76.bicikl_pp.Util;
-import si.gto76.bicikl_pp.DbContract.Db;
+import si.gto76.bicikl_pp.DbContract.DbStations;
 
 import com.google.android.gms.maps.model.LatLng;
 
@@ -157,29 +157,29 @@ public abstract class StationsLookUp extends LookUp {
 	private static boolean dbNotUpToDate(SQLiteDatabase db, Station station) {
 		// Get latest stations record
 		/* SELECT available FROM table WHERE id = id and time = (SELECT max(time) FROM table WHERE id = id) */
-		Cursor cursor = db.rawQuery("SELECT " + Db.COLUMN_NAME_AVAILABLE + " FROM " + Db.TABLE_NAME
-				+ " WHERE " + Db.COLUMN_NAME_STATION_ID + " = " + station.id + " AND " + Db.COLUMN_NAME_TIME
-				+ " = (SELECT MAX(" + Db.COLUMN_NAME_TIME + ") FROM " + Db.TABLE_NAME + " WHERE "
-				+ Db.COLUMN_NAME_STATION_ID + " = " + station.id + ")", null);
+		Cursor cursor = db.rawQuery("SELECT " + DbStations.COLUMN_NAME_AVAILABLE + " FROM " + DbStations.TABLE_NAME
+				+ " WHERE " + DbStations.COLUMN_NAME_STATION_ID + " = " + station.id + " AND " + DbStations.COLUMN_NAME_TIME
+				+ " = (SELECT MAX(" + DbStations.COLUMN_NAME_TIME + ") FROM " + DbStations.TABLE_NAME + " WHERE "
+				+ DbStations.COLUMN_NAME_STATION_ID + " = " + station.id + ")", null);
 
 		if (cursor.getCount() == 0) {
 			return true;
 		}
 
 		cursor.moveToFirst();
-		int available = cursor.getInt(cursor.getColumnIndexOrThrow(Db.COLUMN_NAME_AVAILABLE));
+		int available = cursor.getInt(cursor.getColumnIndexOrThrow(DbStations.COLUMN_NAME_AVAILABLE));
 		return (available != station.available);
 	}
 
 	private static void insertRow(SQLiteDatabase db, Station station) {
 		// Create a new map of values, where column names are the keys
 		ContentValues values = new ContentValues();
-		values.put(Db.COLUMN_NAME_STATION_ID, station.id);
-		values.put(Db.COLUMN_NAME_TIME, System.currentTimeMillis());
-		values.put(Db.COLUMN_NAME_AVAILABLE, station.available);
-		values.put(Db.COLUMN_NAME_FREE, station.free);
+		values.put(DbStations.COLUMN_NAME_STATION_ID, station.id);
+		values.put(DbStations.COLUMN_NAME_TIME, System.currentTimeMillis());
+		values.put(DbStations.COLUMN_NAME_AVAILABLE, station.available);
+		values.put(DbStations.COLUMN_NAME_FREE, station.free);
 		// Insert the new row, returning the primary key value of the new row
-		db.insert(Db.TABLE_NAME, null, values);
+		db.insert(DbStations.TABLE_NAME, null, values);
 	}
 
 }

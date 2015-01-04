@@ -50,11 +50,17 @@ public class AMap extends FragmentActivity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_map);
 
+		DbOptionsApi.fetchConfigurationFromDb(getApplicationContext());
 		setMap();
 		zoomToStationIfSent();
 		drawPolylineIfSent();
-		setMarkers();
 		setDestinationMarkerListeners();
+	}
+	
+	@Override
+	protected void onStart() {
+		super.onStart();
+		setMarkers();
 	}
 
 	// ////////////////////////////////
@@ -124,6 +130,7 @@ public class AMap extends FragmentActivity {
 
 			@Override
 			public void onSuccessfulFetch(final JSONObject result) throws JSONException {
+				stationIds.clear();
 				for (final String id : getIds(result)) {
 					String name = getName(result, id);
 					LatLng latLng = getLatLng(result, id);

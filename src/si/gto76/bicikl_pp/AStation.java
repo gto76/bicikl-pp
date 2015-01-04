@@ -3,7 +3,7 @@ package si.gto76.bicikl_pp;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import si.gto76.bicikl_pp.DbContract.Db;
+import si.gto76.bicikl_pp.DbContract.DbStations;
 import si.gto76.bicikl_pp.asynctasks.DurationLookUp;
 import si.gto76.bicikl_pp.asynctasks.ImageLookUp;
 import si.gto76.bicikl_pp.asynctasks.LocationUpdater;
@@ -126,19 +126,19 @@ public class AStation extends Activity {
 		DbHelper aDbHelper = new DbHelper(getApplicationContext());
 		SQLiteDatabase db = aDbHelper.getReadableDatabase();
 
-		String[] select = { Db.COLUMN_NAME_TIME, Db.COLUMN_NAME_AVAILABLE, Db.COLUMN_NAME_FREE };
-		String where = Db.COLUMN_NAME_STATION_ID + "=?";
+		String[] select = { DbStations.COLUMN_NAME_TIME, DbStations.COLUMN_NAME_AVAILABLE, DbStations.COLUMN_NAME_FREE };
+		String where = DbStations.COLUMN_NAME_STATION_ID + "=?";
 		String[] whereWildcards = { s.id };
-		String sortOrder = Db.COLUMN_NAME_TIME + " DESC";
+		String sortOrder = DbStations.COLUMN_NAME_TIME + " DESC";
 
-		Cursor cursor = db.query(Db.TABLE_NAME, select, where, whereWildcards, null, null, sortOrder);
+		Cursor cursor = db.query(DbStations.TABLE_NAME, select, where, whereWildcards, null, null, sortOrder);
 
 		LinearLayout layout = (LinearLayout) findViewById(R.id.stationsLayout);
 		createTextView("History:", layout, 444);
 		while (cursor.moveToNext()) {
-			long time = cursor.getLong(cursor.getColumnIndexOrThrow(Db.COLUMN_NAME_TIME));
-			int available = cursor.getInt(cursor.getColumnIndexOrThrow(Db.COLUMN_NAME_AVAILABLE));
-			int free = cursor.getInt(cursor.getColumnIndexOrThrow(Db.COLUMN_NAME_FREE));
+			long time = cursor.getLong(cursor.getColumnIndexOrThrow(DbStations.COLUMN_NAME_TIME));
+			int available = cursor.getInt(cursor.getColumnIndexOrThrow(DbStations.COLUMN_NAME_AVAILABLE));
+			int free = cursor.getInt(cursor.getColumnIndexOrThrow(DbStations.COLUMN_NAME_FREE));
 			displayRow(layout, time, available, free);
 		}
 
