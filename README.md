@@ -1,4 +1,4 @@
-Bicikl ++
+Bicikl++
 =========
 
 Namen aplikacije
