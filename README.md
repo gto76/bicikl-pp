@@ -3,6 +3,14 @@ Bicikl++
 
 Public bicycle availability Android app for Ljubljana.
 
+<img src="/doc/Screenshot_2015-02-07-07-12-34.png" height="400">
+<img src="/doc/Screenshot_2015-02-07-07-16-15.png" height="400">
+<img src="/doc/Screenshot_2015-02-07-07-24-05.png" height="400">
+
+<img src="/doc/Screenshot_2015-02-07-07-13-34.png" height="400">
+<img src="/doc/Screenshot_2015-02-07-07-14-06.png" height="400">
+<img src="/doc/Screenshot_2015-02-07-07-20-09.png" height="400">
+
 Purpose of the app
 -------------------
 App is intended for users of public bicycle system in Ljubljana. It enables them to find the quickest routs from current location to selected destination. Besides showing the current availability situation, the app also stores the historic data.
