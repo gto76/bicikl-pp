@@ -1,20 +1,14 @@
 Bicikl++
 =========
 
-Namen aplikacije
-----------------
-Aplikacija je namenjena uporabnikom javnega sistema izposoje koles v Ljubljani. Omogoèa iskanje najhitrejših poti od trenutne do ciljne lokacije. Poleg prikaza trenutnega stanja, aplikacija tudi beleži pretekle informacije o številu koles na postajah.
-
-Realizirani zasloni
+Purpouse of the app
 -------------------
-* Map – Zaèetni zaslon ki prikazuje googlov zemljevid Ljubljane. Na njemu so vidne lokacije postaj. Z daljšim klikom pa izberemo ciljno lokacijo, kar nam prikaže najhitrejšo pot (upoštevajo se samo postaje ki imajo na voljo kolesa).
-* Stations – Zaslon prikaže spisek vseh postaj, urejen po oddaljenosti od trenutne lokacije. V ozadju je fotografija trenutne lokacije.
-* Station – Zaslon prikaže podrobne podatke o postaji ter zgodovino preteklih stanj postaje. V ozadju je fotografija postaje.
-* Paths – Zaslon prikaže spisek najkrajših poti od trenutne do izbrane ciljne lokacije. Poti so urejene po predvidenem èasu potovanja, ter obarvane glede na število prostih koles ter mest. V ozadju je fotografija izbrane ciljne lokacije. 
-* Options – Zaslon omogoèa nastavitev hitrosti kolesarjenja ter zadovoljivega števila koles.
+App is inteded for usesers of public bicycle system in Ljubljana. It enables them to find the quickest routs from current location to selected destination. Besides showing the current availability situation, the app also stores the historic data.
 
-Realizacije zahtev za višjo oceno
----------------------------------
-* Aplikacija je intuitivna za uporabo, 
-* uporablja googlove zemljevide ter
-* komunicira za zunanjimi storitvami: API od Biciklja, Google Duration API in Google Street View Image API. 
+Screens of the app
+------------------
+* Map - The home screen of the app, that shows the Googles map of Ljublana. On it there is a pin for every station. With a longer click (hold) the destination gets selected, and the quickest rout is drawn on a map. The rout consists only of the stations that have avalable bikes/spaces.
+* Stations - Screen shows the list of all the stations, ordered by the distance from current location.
+* Station - Screen that shows the details of a station and it's availability history. In a background, there's a picture of the station taken from the street view api.
+* Paths - The screen shows a list of the quickest routes from current location to the selected destination. The routes are colored acorrding to the avalability of the stations. In the background is a picture of the selected destination.
+* Options - Screen enables cycling speed and the number of acceptable free spaces to be set.
