@@ -9,7 +9,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.NumberPicker;
-import android.widget.NumberPicker.OnValueChangeListener;
 
 public class AOptions extends Activity {
 

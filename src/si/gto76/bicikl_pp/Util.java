@@ -5,18 +5,10 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
-import si.gto76.bicikl_pp.DbContract.DbOptions;
-import si.gto76.bicikl_pp.DbContract.DbStations;
-
 import com.google.android.gms.maps.model.LatLng;
 
-import android.content.ContentValues;
-import android.content.Context;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
 import android.location.Location;
-import android.widget.LinearLayout;
 
 public class Util {
 

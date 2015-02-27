@@ -13,7 +13,6 @@ import si.gto76.bicikl_pp.asynctasks.DurationLookUp;
 import si.gto76.bicikl_pp.asynctasks.StationsLookUp;
 
 import android.content.Intent;
-import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
