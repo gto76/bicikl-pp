@@ -3,12 +3,8 @@ Bicikl++
 
 Public bicycle availability Android app for Ljubljana.
 
-<img src="/doc/Screenshot_2015-02-07-07-12-34.png" height="400">
-<img src="/doc/Screenshot_2015-02-07-07-16-15.png" height="400">
-<img src="/doc/Screenshot_2015-02-07-07-24-05.png" height="400">
-
 <img src="/doc/Screenshot_2015-02-07-07-13-34.png" height="400">
-<img src="/doc/Screenshot_2015-02-07-07-14-06.png" height="400">
+<img src="/doc/Screenshot_2015-02-07-07-16-15.png" height="400">
 <img src="/doc/Screenshot_2015-02-07-07-20-09.png" height="400">
 
 Purpose of the app
