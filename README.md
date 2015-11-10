@@ -9,7 +9,7 @@ Public bicycle availability Android app for Ljubljana
 
 Purpose of the app
 -------------------
-App is intended for users of public bicycle system in Ljubljana. It enables them to find the quickest routs from current location to selected destination. Besides showing the current availability situation, the app also stores the historic data.
+App is intended for users of public bicycle system in Ljubljana. It enables them to find the quickest routs from current location to selected destination. Besides showing the current availability of the bikes, the app also stores the historic data.
 
 Screens of the app 
 ------------------
